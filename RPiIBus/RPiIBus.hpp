@@ -1,5 +1,7 @@
-#include <iostream>
 #pragma once
+#ifdef DEBUG
+#include <iostream>
+#endif
 #include <fcntl.h>
 #include <string>
 #include <unistd.h>
@@ -13,12 +15,18 @@ class Ibus
 public:
     inline Ibus() { Ibus_fd = -1; /* This only for init*/ };
     // UartDevice is dev file , such as "/dev/ttyS0"
-    inline Ibus(char *UartDevice)
+    inline Ibus(const char *UartDevice)
     {
         Ibus_fd = open(UartDevice, O_RDWR | O_NONBLOCK | O_CLOEXEC);
-        struct termios2 options
+        if (Ibus_fd == -1)
         {
-        };
+#ifdef DEBUG
+            std::cout << "IbusDeviceError\n";
+#endif
+            throw std::string("IbusDeviceError");
+        }
+
+        struct termios2 options;
 
         if (0 != ioctl(Ibus_fd, TCGETS2, &options))
         {

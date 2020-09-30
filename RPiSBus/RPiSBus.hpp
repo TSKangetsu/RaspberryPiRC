@@ -1,4 +1,7 @@
 #pragma once
+#ifdef DEBUG
+#include <iostream>
+#endif
 #include <fcntl.h>
 #include <string>
 #include <unistd.h>
@@ -21,12 +24,18 @@ public:
 	                     use SbusRead(int* channelsData, int waitTime) only , do not use SbusQuickRead()
 	   @		  HighSpeed  only use SbusQuickRead() , cannot use SbusRead(int* channelsData, int waitTime) , 
 	                     only return a byte , use SbusPaser(int *sbusRaw , int *Channel) to dealdata*/
-    inline Sbus(char *UartDevice, SbusMode sbus)
+    inline Sbus(const char *UartDevice, SbusMode sbus)
     {
         Sbus_fd = open(UartDevice, O_RDWR | O_NONBLOCK | O_CLOEXEC);
-        struct termios2 options
+        if (Sbus_fd == -1)
         {
-        };
+#ifdef DEBUG
+            std::cout << "SbusDeviceError\n";
+#endif
+            throw std::string("SbusDeviceError");
+        }
+
+        struct termios2 options;
 
         if (0 != ioctl(Sbus_fd, TCGETS2, &options))
         {

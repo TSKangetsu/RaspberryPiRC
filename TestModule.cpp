@@ -4,84 +4,110 @@
 #include <wiringPi.h>
 #include "RPiSBus/RPiSBus.hpp"
 #include "RPiIBus/RPiIBus.hpp"
-int main()
+int main(int argc, char *argv[])
 {
-    int ChannelsData[14];
-    int sbusData[32];
-    int lose;
-    long int time;
-    long int timee;
-
-    Ibus Ibus("/dev/ttyAMA0");
-    while (true)
+    int argvs;
+    while ((argvs = getopt(argc, argv, "vhi:s:S:")) != -1)
     {
-        time = micros();
-        lose = Ibus.IbusRead(ChannelsData, 4000, 2);
-        if (lose != -1)
+        switch (argvs)
         {
-            for (size_t i = 0; i < 14; i++)
+        case 'v':
+            std::cout << "[RPiSingleAPM] version 1.0.f Beta , Acess By TSKangetsu\n"
+                      << "	checkout : https://github.com/TSKangetsu/RPiSingleAPM \n";
+            break;
+        case 'h':
+            std::cout << "-i /dev/ttyS0 to test ibus, -s /dev/ttyS0 for Sbus normal,-S /dev/ttyS0 for sbus highspeed";
+            break;
+        case 'i':
+        {
+            int ChannelsData[14];
+            int sbusData[32];
+            int lose;
+            long int time;
+            long int timee;
+            Ibus *IbusT;
+            IbusT = new Ibus(optarg);
+            while (true)
             {
-                std::cout << ChannelsData[i] << " ";
+                time = micros();
+                lose = IbusT->IbusRead(ChannelsData, 4000, 2);
+                if (lose != -1)
+                {
+                    for (size_t i = 0; i < 14; i++)
+                    {
+                        std::cout << ChannelsData[i] << " ";
+                    }
+                    timee = micros();
+                    std::cout << "T: " << timee - time;
+                    std::cout << " \n";
+                }
             }
-            timee = micros();
-            std::cout << "T: " << timee - time;
-            std::cout << " \n";
+        }
+        break;
+
+        case 's':
+        {
+            wiringPiSetup();
+            long int time;
+            long int timee;
+
+            int ChannelsData[16];
+            int sbusData[25];
+            int lose;
+            Sbus newSBUS(optarg, SbusMode::Normal);
+            while (true)
+            {
+                time = micros();
+                lose = newSBUS.SbusRead(ChannelsData, 4700, 2);
+                if (lose != -1)
+                {
+                    std::cout << lose << " ";
+                    for (size_t i = 0; i < 16; i++)
+                    {
+                        std::cout << ChannelsData[i] << " ";
+                    }
+                    timee = micros();
+                    std::cout << timee - time << " ";
+                    std::cout << "\n";
+                }
+            }
+        }
+        break;
+
+        case 'S':
+        {
+            wiringPiSetup();
+            long int time;
+            long int timee;
+
+            int ChannelsData[16];
+            int sbusData[25];
+            int lose;
+
+            Sbus newSBUS(optarg, SbusMode::HighSpeed);
+            while (true)
+            {
+                lose = newSBUS.SbusQuickRead();
+                if (lose == 15)
+                {
+                    time = micros();
+                    for (size_t i = 0; i < 25; i++)
+                    {
+                        sbusData[i] = newSBUS.SbusQuickRead();
+                        usleep(50);
+                    }
+                    newSBUS.SbusPaser(sbusData, ChannelsData);
+                    timee = micros();
+                    for (size_t i = 0; i < 16; i++)
+                    {
+                        std::cout << ChannelsData[i] << " ";
+                    }
+                    std::cout << timee - time << " ";
+                    std::cout << " \n";
+                }
+            }
+        }
+        break;
         }
     }
 }
-
-// int main(void)
-// {
-//     wiringPiSetup();
-//     long int time;
-//     long int timee;
-
-//     int ChannelsData[16];
-//     int sbusData[25];
-//     int lose;
-//     Sbus newSBUS("/dev/ttyAMA0", SbusMode::Normal);
-//     //Sbus newSBUS("/dev/ttyS0", SbusMode::HighSpeed);
-
-//     // this is HighSpeed mode example
-
-//     //while (true)
-//     //{
-//     //	lose = newSBUS.SbusQuickRead();
-//     //	if (lose == 15)
-//     //	{
-//     //		time = micros();
-//     //		for (size_t i = 0; i < 25; i++)
-//     //		{
-//     //			sbusData[i] = newSBUS.SbusQuickRead();
-//     //			usleep(50);
-//     //		}
-//     //		newSBUS.SbusPaser(sbusData, ChannelsData);
-//     //		timee = micros();
-//     //		for (size_t i = 0; i < 16; i++)
-//     //		{
-//     //			std::cout << ChannelsData[i] << " ";
-//     //		}
-//     //		std::cout << timee - time << " ";
-//     //		std::cout << " \n";
-//     //	}
-//     //}
-
-//     // this is Normal mode example
-
-//     while (true)
-//     {
-//         time = micros();
-//         lose = newSBUS.SbusRead(ChannelsData, 4700, 2);
-//         if (lose != -1)
-//         {
-//             std::cout << lose << " ";
-//             for (size_t i = 0; i < 16; i++)
-//             {
-//                 std::cout << ChannelsData[i] << " ";
-//             }
-//             timee = micros();
-//             std::cout << timee - time << " ";
-//             std::cout << "\n";
-//         }
-//     }
-// }
