@@ -2,12 +2,15 @@
 #include <unistd.h>
 #include <iostream>
 #include <wiringPi.h>
+#include <wiringSerial.h>
+#include "RPiGPS/RPiGPS.hpp"
 #include "RPiSBus/RPiSBus.hpp"
 #include "RPiIBus/RPiIBus.hpp"
+
 int main(int argc, char *argv[])
 {
     int argvs;
-    while ((argvs = getopt(argc, argv, "vhi:s:S:")) != -1)
+    while ((argvs = getopt(argc, argv, "vhi:s:S:g:")) != -1)
     {
         switch (argvs)
         {
@@ -104,6 +107,24 @@ int main(int argc, char *argv[])
                     }
                     std::cout << timee - time << " ";
                     std::cout << " \n";
+                }
+            }
+        }
+        break;
+
+        case 'g':
+        {
+            char GPSData[5][100];
+            GPSUart myUart(optarg);
+            while (true)
+            {
+                myUart.GPSRead(GPSData);
+                for (size_t i = 0; i <= 5; i++)
+                {
+                    for (size_t e = 0; e <= 99; e++)
+                    {
+                        std::cout << GPSData[i][e];
+                    }
                 }
             }
         }
