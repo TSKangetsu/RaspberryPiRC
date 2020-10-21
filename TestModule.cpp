@@ -114,21 +114,25 @@ int main(int argc, char *argv[])
 
         case 'g':
         {
-            char GPSData[5][100];
+            char **GPSData = new char *[6];
+            for (int i = 0; i < 6; ++i)
+                GPSData[i] = new char[99]();
             GPSUart myUart(optarg);
             while (true)
             {
                 myUart.GPSRead(GPSData);
-                for (size_t i = 0; i <= 5; i++)
+                for (size_t e = 0; e < 6; e++)
                 {
-                    for (size_t e = 0; e <= 99; e++)
+                    for (size_t i = 0; i < 99; i++)
                     {
-                        std::cout << GPSData[i][e];
+                        std::cout << GPSData[e][i];
                     }
                 }
+                std::cout << "\n\n";
+                usleep(200000);
             }
+            break;
         }
-        break;
         }
     }
 }
