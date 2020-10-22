@@ -13,6 +13,16 @@
 #include <string.h>
 #include <asm-generic/termbits.h>
 
+struct GPSUartData
+{
+    int satillitesCount;
+    bool lat_North_Mode;
+    bool lat_East_Mode;
+    double lat = 0;
+    double lng = 0;
+    double alititude = 0;
+};
+
 class GPSUart
 {
 public:
@@ -167,8 +177,9 @@ public:
         }
     };
 
-    inline void GPSParse()
+    inline GPSUartData GPSParse()
     {
+        GPSUartData myData;
         std::string GPSDataStr;
         std::string GPSData[40];
         for (size_t i = 0; i < 6; i++)
@@ -177,12 +188,24 @@ public:
             if (strncmp("GNGGA", GPSDataStr.c_str(), 5) == 0)
             {
                 dataParese(GPSDataStr, GPSData, ',');
+                myData.lat = std::atof(GPSData[2].c_str()) / 100.0;
+                myData.lng = std::atof(GPSData[4].c_str()) / 100.0;
+                if (GPSData[3].c_str() == "N")
+                    myData.lat_North_Mode = true;
+                else
+                    myData.lat_North_Mode = false;
+                if (GPSData[5].c_str() == "E")
+                    myData.lat_East_Mode = true;
+                else
+                    myData.lat_East_Mode = false;
+                myData.satillitesCount = std::atof(GPSData[7].c_str());
             }
             else if (strncmp("GNGLL", GPSDataStr.c_str(), 5) == 0)
             {
                 dataParese(GPSDataStr, GPSData, ',');
             }
         }
+        return myData;
     };
 
 private:
