@@ -5,6 +5,7 @@
 #include <wiringSerial.h>
 #include <fcntl.h>
 #include <string>
+#include <sstream>
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
@@ -136,7 +137,7 @@ public:
                             {
                                 if (read(GPSUart_fd, &GPSSingleData, sizeof(GPSSingleData)) != -1)
                                 {
-                                    if (GPSSingleData == '*')
+                                    if (GPSSingleData == '\n')
                                     {
                                         GPSData = "";
                                         break;
@@ -148,7 +149,7 @@ public:
                             else
                             {
                                 GPSData += GPSSingleData;
-                                if (GPSSingleData == '*')
+                                if (GPSSingleData == '\n')
                                 {
                                     return 1;
                                 }
@@ -166,6 +167,24 @@ public:
         }
     };
 
+    inline void GPSParse()
+    {
+        std::string GPSDataStr;
+        std::string GPSData[40];
+        for (size_t i = 0; i < 6; i++)
+        {
+            GPSRead(GPSDataStr);
+            if (strncmp("GNGGA", GPSDataStr.c_str(), 5) == 0)
+            {
+                dataParese(GPSDataStr, GPSData, ',');
+            }
+            else if (strncmp("GNGLL", GPSDataStr.c_str(), 5) == 0)
+            {
+                dataParese(GPSDataStr, GPSData, ',');
+            }
+        }
+    };
+
 private:
     int GPSUart_fd;
     char GPSSingleData;
@@ -176,4 +195,16 @@ private:
                                  0x00, 0xE1, 0x00, 0x00, 0x07, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0xE2, 0xE1};
     int lose_frameCount;
     fd_set fd_Maker;
+
+    void dataParese(std::string data, std::string databuff[256], const char splti)
+    {
+        std::istringstream f(data);
+        std::string s;
+        int count = 0;
+        while (getline(f, s, splti))
+        {
+            databuff[count] = s;
+            count++;
+        }
+    }
 };

@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
                 for (size_t i = 0; i < 6; i++)
                 {
                     myUart.GPSRead(GPSData);
-                    std::cout << GPSData << "\n";
+                    std::cout << GPSData;
                 }
                 timee = micros();
                 std::cout << "last frame time : " << timee - time << "\n";
@@ -133,8 +133,28 @@ int main(int argc, char *argv[])
                 else
                     usleep(200000 - (timee - time));
             }
-            break;
         }
+        break;
+
+        case 'G':
+        {
+            long int time;
+            long int timee;
+            std::string GPSData;
+            GPSUart myUart(optarg);
+            while (true)
+            {
+                time = micros();
+                myUart.GPSParse();
+                timee = micros();
+                std::cout << "last frame time : " << timee - time << "\n";
+                if ((timee - time) > 150000)
+                    usleep(200000);
+                else
+                    usleep(200000 - (timee - time));
+            }
+        }
+        break;
         }
     }
 }
