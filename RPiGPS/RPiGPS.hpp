@@ -182,14 +182,26 @@ public:
         GPSUartData myData;
         std::string GPSDataStr;
         std::string GPSData[40];
+        std::string GPSTmpData[2];
         for (size_t i = 0; i < 6; i++)
         {
             GPSRead(GPSDataStr);
             if (strncmp("GNGGA", GPSDataStr.c_str(), 5) == 0)
             {
                 dataParese(GPSDataStr, GPSData, ',');
-                myData.lat = std::atof(GPSData[2].c_str()) / 100.0;
-                myData.lng = std::atof(GPSData[4].c_str()) / 100.0;
+
+                GPSData[2] = std::to_string(std::atof(GPSData[2].c_str()) / 100.0);
+                dataParese(GPSData[2], GPSTmpData, '.');
+                myData.lat = std::atof(GPSTmpData[0].c_str()) * 10000.0;
+                myData.lat += std::atof(GPSTmpData[1].c_str()) / 60.0;
+                myData.lat = (int)(myData.lat * 100);
+
+                GPSData[4] = std::to_string(std::atof(GPSData[4].c_str()) / 100.0);
+                dataParese(GPSData[4], GPSTmpData, '.');
+                myData.lng = std::atof(GPSTmpData[0].c_str()) * 10000.0;
+                myData.lng += std::atof(GPSTmpData[1].c_str()) / 60.0;
+                myData.lng = (int)(myData.lng * 100);
+
                 if (GPSData[3].c_str() == "N")
                     myData.lat_North_Mode = true;
                 else
