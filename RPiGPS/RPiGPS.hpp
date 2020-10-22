@@ -9,11 +9,8 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <stdint.h>
+#include <string.h>
 #include <asm-generic/termbits.h>
-
-struct GPSData
-{
-};
 
 class GPSUart
 {
@@ -104,66 +101,79 @@ public:
                         close(GPSUart_fd);
                         GPSUart_fd = -1;
                     }
+                    ioctl(GPSUart_fd, TCFLSH, 0);
                 }
             }
         };
     }
 
-    inline int GPSRead(char **GPSData)
+    inline int GPSRead(std::string &GPSData)
     {
         if (GPSUart_fd == -1)
             return -1;
+        ioctl(GPSUart_fd, TCIFLUSH, 0);
+        usleep(2000);
         FD_ZERO(&fd_Maker);
         FD_SET(GPSUart_fd, &fd_Maker);
         lose_frameCount = 0;
+        GPSData = "";
+        char Header[5];
         while (true)
         {
-            for (size_t e = 0; e < 6; e++)
+            if (read(GPSUart_fd, &GPSSingleData, sizeof(GPSSingleData)) != -1)
             {
-                if (read(GPSUart_fd, &GPSSingleData, sizeof(GPSSingleData) != -1))
+                if (GPSSingleData == '$')
                 {
-                    if (GPSSingleData == '$')
+                    for (size_t i = 0; i < 99; i++)
                     {
-                        GPSData[e][0] == GPSSingleData;
-                        for (size_t i = 1; i < 99; i++)
+                        if (read(GPSUart_fd, &GPSSingleData, sizeof(GPSSingleData)) != -1)
                         {
-                            if (read(GPSUart_fd, &GPSSingleData, sizeof(GPSSingleData)) != -1)
+                            if (i < 5)
                             {
-                                if (GPSSingleData == '\n')
+                                Header[i] = GPSSingleData;
+                            }
+                            if (strncmp(Header, "GNTXT", 5) == 0)
+                            {
+                                if (read(GPSUart_fd, &GPSSingleData, sizeof(GPSSingleData)) != -1)
                                 {
-                                    GPSData[e][i] = GPSSingleData;
-                                    break;
+                                    if (GPSSingleData == '*')
+                                    {
+                                        GPSData = "";
+                                        break;
+                                    }
                                 }
-                                GPSData[e][i] = GPSSingleData;
+                                else
+                                    usleep(800);
                             }
                             else
                             {
-                                i--;
+                                GPSData += GPSSingleData;
+                                if (GPSSingleData == '*')
+                                {
+                                    return 1;
+                                }
                             }
                         }
+                        else
+                        {
+                            i--;
+                            usleep(800);
+                        }
                     }
-                    else
-                    {
-                        e--;
-                    }
-                }
-                else
-                {
-                    e--;
                 }
             }
-            return 0;
+            usleep(1000);
         }
     };
 
 private:
     int GPSUart_fd;
     char GPSSingleData;
+    bool GNRMCComfirm = false;
     uint8_t GPSDisableGPGSVConfig[11] = {0xB5, 0x62, 0x06, 0x01, 0x03, 0x00, 0xF0, 0x03, 0x00, 0xFD, 0x15};
     uint8_t GPS5HzConfig[14] = {0xB5, 0x62, 0x06, 0x08, 0x06, 0x00, 0xC8, 0x00, 0x01, 0x00, 0x01, 0x00, 0xDE, 0x6A};
     uint8_t Set_to_57kbps[28] = {0xB5, 0x62, 0x06, 0x00, 0x14, 0x00, 0x01, 0x00, 0x00, 0x00, 0xD0, 0x08, 0x00, 0x00,
                                  0x00, 0xE1, 0x00, 0x00, 0x07, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0xE2, 0xE1};
-    int InputBuffer;
     int lose_frameCount;
     fd_set fd_Maker;
 };

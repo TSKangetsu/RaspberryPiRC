@@ -10,7 +10,7 @@
 int main(int argc, char *argv[])
 {
     int argvs;
-    while ((argvs = getopt(argc, argv, "vhi:s:S:g:")) != -1)
+    while ((argvs = getopt(argc, argv, "vhi:s:S:g:G:")) != -1)
     {
         switch (argvs)
         {
@@ -114,22 +114,24 @@ int main(int argc, char *argv[])
 
         case 'g':
         {
-            char **GPSData = new char *[6];
-            for (int i = 0; i < 6; ++i)
-                GPSData[i] = new char[99]();
+            long int time;
+            long int timee;
+            std::string GPSData;
             GPSUart myUart(optarg);
             while (true)
             {
-                myUart.GPSRead(GPSData);
-                for (size_t e = 0; e < 6; e++)
+                time = micros();
+                for (size_t i = 0; i < 6; i++)
                 {
-                    for (size_t i = 0; i < 99; i++)
-                    {
-                        std::cout << GPSData[e][i];
-                    }
+                    myUart.GPSRead(GPSData);
+                    std::cout << GPSData << "\n";
                 }
-                std::cout << "\n\n";
-                usleep(200000);
+                timee = micros();
+                std::cout << "last frame time : " << timee - time << "\n";
+                if ((timee - time) > 150000)
+                    usleep(200000);
+                else
+                    usleep(200000 - (timee - time));
             }
             break;
         }
