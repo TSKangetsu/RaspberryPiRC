@@ -202,11 +202,11 @@ public:
                 myData.lng += std::atof(GPSTmpData[1].c_str()) / 60.0;
                 myData.lng = (int)(myData.lng * 100);
 
-                if (GPSData[3].c_str() == "N")
+                if (strncmp(GPSData[3].c_str(), "N", 1) == 0)
                     myData.lat_North_Mode = true;
                 else
                     myData.lat_North_Mode = false;
-                if (GPSData[5].c_str() == "E")
+                if (strncmp(GPSData[5].c_str(), "E", 1) == 0)
                     myData.lat_East_Mode = true;
                 else
                     myData.lat_East_Mode = false;
