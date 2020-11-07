@@ -163,7 +163,9 @@ int main(int argc, char *argv[])
 
         case 'c':
         {
-            long rawx, rawy, rawz;
+            long rawx;
+            long rawy;
+            long rawz;
             GPSI2CCompass_QMC5883L mycompassTest;
             mycompassTest.GPSI2CCompass_QMC5883LInit();
             while (true)
