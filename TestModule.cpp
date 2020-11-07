@@ -11,7 +11,7 @@
 int main(int argc, char *argv[])
 {
     int argvs;
-    while ((argvs = getopt(argc, argv, "vhi:s:S:g:G:")) != -1)
+    while ((argvs = getopt(argc, argv, "vhi:s:S:g:G:c")) != -1)
     {
         switch (argvs)
         {
@@ -157,6 +157,19 @@ int main(int argc, char *argv[])
                     usleep(200000);
                 else
                     usleep(200000 - (timee - time));
+            }
+        }
+        break;
+
+        case 'c':
+        {
+            long rawx, rawy, rawz;
+            GPSI2CCompass_QMC5883L mycompassTest;
+            mycompassTest.GPSI2CCompass_QMC5883LInit();
+            while (true)
+            {
+                mycompassTest.GPSI2CCompass_QMC5883LRead(rawx, rawy, rawz);
+                std::cout << rawx << " " << rawy << " " << rawz << "\n";
             }
         }
         break;

@@ -11,7 +11,10 @@
 #include <sys/types.h>
 #include <stdint.h>
 #include <string.h>
+#include <linux/i2c-dev.h>
+#include <wiringPiI2C.h>
 #include <asm-generic/termbits.h>
+#define QMC5883LADDR 0x0D
 
 struct GPSUartData
 {
@@ -242,4 +245,65 @@ private:
             count++;
         }
     }
+};
+
+class GPSI2CCompass_QMC5883L
+{
+public:
+    inline bool GPSI2CCompass_QMC5883LInit()
+    {
+        CompassFD = wiringPiI2CSetup(0x0d);
+        if (CompassFD < 0)
+        {
+#ifdef DEBUG
+            std::cout << "[QMC5883LDrive] SetUp 0x0d Failed\n";
+#endif
+            return false;
+        }
+        if (wiringPiI2CWriteReg16(CompassFD, 0x0A, 0x80) < 0)
+        {
+#ifdef DEBUG
+            std::cout << "[QMC5883LDrive] ResetPower Failed\n";
+#endif
+            return false;
+        }
+        if (wiringPiI2CWriteReg16(CompassFD, 0x0B, 0x01))
+        {
+#ifdef DEBUG
+            std::cout << "[QMC5883LDrive] ResetCompassStatus Failed\n";
+#endif
+            return false;
+        }
+        if (wiringPiI2CWriteReg16(CompassFD, 0x09, 0x0D))
+        {
+#ifdef DEBUG
+            std::cout << "[QMC5883LDrive] Set OSR=512,MAX=2GS,ODR=200Hz Failed\n";
+#endif
+            return false;
+        }
+        return true;
+    }
+
+    inline int GPSI2CCompass_QMC5883LRead(long &RawMAGX, long &RawMAGY, long &RawMAGZ)
+    {
+        DataBuffer[0] = wiringPiI2CReadReg8(CompassFD, 0x00);
+        DataBuffer[1] = wiringPiI2CReadReg8(CompassFD, 0x01);
+        unsigned long TMPRawMAGX = (DataBuffer[1] << 8 | DataBuffer[0]);
+        RawMAGX = (short)TMPRawMAGX;
+        DataBuffer[0] = wiringPiI2CReadReg8(CompassFD, 0x02);
+        DataBuffer[1] = wiringPiI2CReadReg8(CompassFD, 0x03);
+        unsigned long TMPRawMAGY = (DataBuffer[3] << 8 | DataBuffer[2]);
+        RawMAGY = (short)TMPRawMAGY;
+        DataBuffer[0] = wiringPiI2CReadReg8(CompassFD, 0x04);
+        DataBuffer[1] = wiringPiI2CReadReg8(CompassFD, 0x05);
+        unsigned long TMPRawMAGZ = (DataBuffer[5] << 8 | DataBuffer[4]);
+        RawMAGZ = (short)TMPRawMAGZ;
+    }
+
+private:
+    int CompassFD;
+    char RESET = 0x0B;
+    char SPEED = 0x09;
+    char SETPOWER = 0x0A;
+    int DataBuffer[2];
 };
