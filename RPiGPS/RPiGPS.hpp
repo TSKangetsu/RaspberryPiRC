@@ -292,11 +292,11 @@ public:
         RawMAGX = (short)TMPRawMAGX;
         DataBuffer[0] = wiringPiI2CReadReg8(CompassFD, 0x02);
         DataBuffer[1] = wiringPiI2CReadReg8(CompassFD, 0x03);
-        unsigned long TMPRawMAGY = (DataBuffer[2] | DataBuffer[3] << 8);
+        unsigned long TMPRawMAGY = (DataBuffer[0] | DataBuffer[1] << 8);
         RawMAGY = (short)TMPRawMAGY;
         DataBuffer[0] = wiringPiI2CReadReg8(CompassFD, 0x04);
         DataBuffer[1] = wiringPiI2CReadReg8(CompassFD, 0x05);
-        unsigned long TMPRawMAGZ = (DataBuffer[4] | DataBuffer[5] << 8);
+        unsigned long TMPRawMAGZ = (DataBuffer[0] | DataBuffer[1] << 8);
         RawMAGZ = (short)TMPRawMAGZ;
     }
 
