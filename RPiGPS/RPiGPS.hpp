@@ -156,7 +156,7 @@ public:
                                     }
                                 }
                                 else
-                                    usleep(100);
+                                    usleep(200);
                             }
                             else
                             {
@@ -170,12 +170,12 @@ public:
                         else
                         {
                             i--;
-                            usleep(100);
+                            usleep(200);
                         }
                     }
                 }
             }
-            usleep(50);
+            usleep(500);
         }
     };
 
