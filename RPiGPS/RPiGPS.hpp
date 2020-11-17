@@ -110,12 +110,13 @@ public:
                     options_57.c_iflag = IGNPAR;
                     options_57.c_oflag = 0;
                     options_57.c_lflag = 0;
+                    options_57.c_cc[VTIME] = 0;
+                    options_57.c_cc[VMIN] = 0;
                     if (0 != ioctl(GPSUart_fd, TCSETS2, &options_57))
                     {
                         close(GPSUart_fd);
                         GPSUart_fd = -1;
                     }
-                    ioctl(GPSUart_fd, TCFLSH, 0);
                 }
             }
         };
@@ -125,8 +126,6 @@ public:
     {
         if (GPSUart_fd == -1)
             return -1;
-        ioctl(GPSUart_fd, TCIFLUSH, 0);
-        usleep(2000);
         FD_ZERO(&fd_Maker);
         FD_SET(GPSUart_fd, &fd_Maker);
         lose_frameCount = 0;
@@ -157,7 +156,7 @@ public:
                                     }
                                 }
                                 else
-                                    usleep(800);
+                                    usleep(100);
                             }
                             else
                             {
@@ -171,12 +170,12 @@ public:
                         else
                         {
                             i--;
-                            usleep(800);
+                            usleep(100);
                         }
                     }
                 }
             }
-            usleep(1000);
+            usleep(50);
         }
     };
 

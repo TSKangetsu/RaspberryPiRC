@@ -141,22 +141,29 @@ int main(int argc, char *argv[])
         {
             long int time;
             long int timee;
+            int mal = 0;
             std::string GPSData;
             GPSUartData mydata;
             GPSUart myUart(optarg);
             while (true)
             {
                 time = micros();
-                mydata = myUart.GPSParse();
-                std::cout << "satillites: " << mydata.satillitesCount << " ";
-                std::cout << "lat: " << std::setprecision(9) << mydata.lat << " ";
-                std::cout << "lng: " << std::setprecision(10) << mydata.lng << " \n";
+                if (mal == 10)
+                {
+                    mal = 0;
+                    mydata = myUart.GPSParse();
+                    std::cout << "satillites: " << mydata.satillitesCount << " ";
+                    std::cout << "lat: " << std::setprecision(9) << mydata.lat << " ";
+                    std::cout << "lng: " << std::setprecision(10) << mydata.lng << " \n";
+                    long int timees = micros();
+                    std::cout << "last frame time : " << timees - time << "\n";
+                }
                 timee = micros();
-                std::cout << "last frame time : " << timee - time << "\n";
-                if ((timee - time) > 150000)
-                    usleep(200000);
+                mal++;
+                if ((timee - time) > 15000)
+                    usleep(1500);
                 else
-                    usleep(200000 - (timee - time));
+                    usleep(20000 - (timee - time));
             }
         }
         break;
