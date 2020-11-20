@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <iostream>
 #include <iomanip>
+#include <thread>
 #include <wiringPi.h>
 #include <wiringSerial.h>
 #include "RPiGPS/RPiGPS.hpp"
@@ -144,27 +145,33 @@ int main(int argc, char *argv[])
             int mal = 0;
             std::string GPSData;
             GPSUartData mydata;
-            GPSUart myUart(optarg);
-            while (true)
-            {
-                time = micros();
-                if (mal == 10)
+            GPSUart *myUart = new GPSUart(optarg);
+            sleep(5);
+            std::thread test([&] {
+                mal = 10;
+                myUart->GPSReOpen();
+                while (true)
                 {
-                    mal = 0;
-                    mydata = myUart.GPSParse();
-                    std::cout << "satillites: " << mydata.satillitesCount << " ";
-                    std::cout << "lat: " << std::setprecision(9) << mydata.lat << " ";
-                    std::cout << "lng: " << std::setprecision(10) << mydata.lng << " \n";
-                    long int timees = micros();
-                    std::cout << "last frame time : " << timees - time << "\n";
+                    time = micros();
+                    if (mal == 10)
+                    {
+                        mal = 0;
+                        mydata = myUart->GPSParse();
+                        std::cout << "satillites: " << mydata.satillitesCount << " ";
+                        std::cout << "lat: " << std::setprecision(9) << mydata.lat << " ";
+                        std::cout << "lng: " << std::setprecision(10) << mydata.lng << " \n";
+                        long int timees = micros();
+                        std::cout << "last frame time : " << timees - time << "\n";
+                    }
+                    timee = micros();
+                    mal++;
+                    if ((timee - time) > 15000)
+                        usleep(1500);
+                    else
+                        usleep(20000 - (timee - time));
                 }
-                timee = micros();
-                mal++;
-                if ((timee - time) > 15000)
-                    usleep(1500);
-                else
-                    usleep(20000 - (timee - time));
-            }
+            });
+            test.join();
         }
         break;
 

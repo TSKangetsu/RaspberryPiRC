@@ -31,6 +31,7 @@ class GPSUart
 public:
     inline GPSUart(const char *UartDevice)
     {
+        GPSDevice = UartDevice;
         GPSUart_fd = open(UartDevice, O_RDWR | O_NONBLOCK | O_CLOEXEC);
         if (GPSUart_fd == -1)
         {
@@ -90,36 +91,44 @@ public:
                     close(GPSUart_fd);
                     GPSUart_fd = -1;
                     //reopen for 57kbps
-                    usleep(50000);
-                    GPSUart_fd = open(UartDevice, O_RDWR | O_NONBLOCK | O_CLOEXEC);
-                    if (GPSUart_fd == -1)
-                    {
-#ifdef DEBUG
-                        std::cout << "GPS57DeviceError\n";
-#endif
-                        throw std::string("GPS57DeviceError");
-                    }
-                    struct termios2 options_57;
-
-                    if (0 != ioctl(GPSUart_fd, TCGETS2, &options_57))
-                    {
-                        close(GPSUart_fd);
-                        GPSUart_fd = -1;
-                    }
-                    options_57.c_cflag = B57600 | CS8 | CLOCAL | CREAD;
-                    options_57.c_iflag = IGNPAR;
-                    options_57.c_oflag = 0;
-                    options_57.c_lflag = 0;
-                    options_57.c_cc[VTIME] = 0;
-                    options_57.c_cc[VMIN] = 0;
-                    if (0 != ioctl(GPSUart_fd, TCSETS2, &options_57))
-                    {
-                        close(GPSUart_fd);
-                        GPSUart_fd = -1;
-                    }
                 }
             }
         };
+    }
+
+    inline int GPSReOpen()
+    {
+        if (GPSUart_fd != -1)
+        {
+            close(GPSUart_fd);
+            GPSUart_fd = -1;
+        }
+        GPSUart_fd = open(GPSDevice.c_str(), O_RDWR | O_NONBLOCK | O_CLOEXEC);
+        if (GPSUart_fd == -1)
+        {
+#ifdef DEBUG
+            std::cout << "GPS57DeviceError\n";
+#endif
+            throw std::string("GPS57DeviceError");
+        }
+        struct termios2 options_57;
+
+        if (0 != ioctl(GPSUart_fd, TCGETS2, &options_57))
+        {
+            close(GPSUart_fd);
+            GPSUart_fd = -1;
+        }
+        options_57.c_cflag = B57600 | CS8 | CLOCAL | CREAD;
+        options_57.c_iflag = IGNPAR;
+        options_57.c_oflag = 0;
+        options_57.c_lflag = 0;
+        options_57.c_cc[VTIME] = 0;
+        options_57.c_cc[VMIN] = 0;
+        if (0 != ioctl(GPSUart_fd, TCSETS2, &options_57))
+        {
+            close(GPSUart_fd);
+            GPSUart_fd = -1;
+        }
     }
 
     inline int GPSRead(std::string &GPSData)
@@ -226,6 +235,7 @@ private:
     int GPSUart_fd;
     char GPSSingleData;
     bool GNRMCComfirm = false;
+    std::string GPSDevice;
     uint8_t GPSDisableGPGSVConfig[11] = {0xB5, 0x62, 0x06, 0x01, 0x03, 0x00, 0xF0, 0x03, 0x00, 0xFD, 0x15};
     uint8_t GPS5HzConfig[14] = {0xB5, 0x62, 0x06, 0x08, 0x06, 0x00, 0xC8, 0x00, 0x01, 0x00, 0x01, 0x00, 0xDE, 0x6A};
     uint8_t Set_to_57kbps[28] = {0xB5, 0x62, 0x06, 0x00, 0x14, 0x00, 0x01, 0x00, 0x00, 0x00, 0xD0, 0x08, 0x00, 0x00,
