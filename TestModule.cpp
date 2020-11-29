@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
             GPSUart *myUart = new GPSUart(optarg);
             mal = 10;
             myUart->GPSReOpen();
-            sleep(5);
+            // sleep(5);
             while (true)
             {
                 time = micros();

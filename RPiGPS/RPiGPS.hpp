@@ -157,13 +157,13 @@ public:
         myData.DataUnCorrect = false;
         std::string GPSDataStr;
         std::string GPSDataStrError;
-        std::string GPSData[256];
-        std::string GPSDataSub[15];
+        std::string GPSData[255];
+        std::string GPSDataSub[40];
         std::string GPSTmpData[2];
         std::string GPSDataChecker[5];
 
         GPSRead(GPSDataStr);
-        DataCount = dataParese(GPSDataStr, GPSData, "\r\n");
+        DataCount = dataParese(GPSDataStr, GPSData, "\r\n", 255);
 
         int Count = 0;
         while (GPSData[Count] != std::string(";"))
@@ -175,21 +175,21 @@ public:
                 {
                     break;
                 }
-                dataParese(GPSData[Count], GPSDataChecker, '*');
-                if (GPSDataChecker[2] == std::string(""))
+                dataParese(GPSData[Count], GPSDataChecker, '*', 5);
+                if (GPSDataChecker[1] == std::string(""))
                 {
                     myData.DataUnCorrect = true;
                 }
 
-                dataParese(GPSData[Count], GPSDataSub, ',');
+                dataParese(GPSData[Count], GPSDataSub, ',', 40);
                 std::string GPSDataTmpLat = std::to_string(std::atof(GPSDataSub[2].c_str()) / 100.0);
-                dataParese(GPSDataTmpLat, GPSTmpData, '.');
+                dataParese(GPSDataTmpLat, GPSTmpData, '.', 2);
                 myData.lat = std::atof(GPSTmpData[0].c_str()) * 10000.0;
                 myData.lat += std::atof(GPSTmpData[1].c_str()) / 60.0;
                 myData.lat = (int)(myData.lat * 100);
 
                 std::string GPSDataTmpLng = std::to_string(std::atof(GPSDataSub[4].c_str()) / 100.0);
-                dataParese(GPSDataTmpLng, GPSTmpData, '.');
+                dataParese(GPSDataTmpLng, GPSTmpData, '.', 2);
                 myData.lng = std::atof(GPSTmpData[0].c_str()) * 10000.0;
                 myData.lng += std::atof(GPSTmpData[1].c_str()) / 60.0;
                 myData.lng = (int)(myData.lng * 100);
@@ -211,7 +211,7 @@ public:
             }
             else if (strncmp("$GNGLL", GPSData[Count].c_str(), 5) == 0)
             {
-                dataParese(GPSData[Count], GPSDataSub, ',');
+                dataParese(GPSData[Count], GPSDataSub, ',', 40);
             }
             Count++;
             GPSLastDebug = GPSDataStr;
@@ -233,25 +233,29 @@ private:
     int lose_frameCount;
     fd_set fd_Maker;
 
-    void dataParese(std::string data, std::string *databuff, const char splti)
+    void dataParese(std::string data, std::string *databuff, const char splti, int MaxSize)
     {
         std::istringstream f(data);
         std::string s;
         int count = 0;
         while (getline(f, s, splti))
         {
+            if (count > MaxSize)
+                break;
             databuff[count] = s;
             count++;
         }
     }
 
-    int dataParese(std::string data, std::string *databuff, std::string splti)
+    int dataParese(std::string data, std::string *databuff, std::string splti, int MaxSize)
     {
         int Count = 0;
         size_t pos = 0;
         std::string token;
         while ((pos = data.find(splti)) != std::string::npos)
         {
+            if (Count > MaxSize)
+                break;
             token = data.substr(0, pos);
             databuff[Count] = token;
             data.erase(0, pos + splti.length());
