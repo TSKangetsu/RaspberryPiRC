@@ -8,7 +8,9 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <stdint.h>
-#include <asm-generic/termbits.h>
+#define termios asmtermios
+#include <asm/termbits.h>
+#undef termios
 
 class Ibus
 {

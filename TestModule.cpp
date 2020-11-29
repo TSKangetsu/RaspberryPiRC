@@ -12,7 +12,8 @@
 int main(int argc, char *argv[])
 {
     int argvs;
-    while ((argvs = getopt(argc, argv, "vhi:s:S:g:G:c")) != -1)
+    wiringPiSetup();
+    while ((argvs = getopt(argc, argv, "vhi:s:g:G:c")) != -1)
     {
         switch (argvs)
         {
@@ -52,14 +53,13 @@ int main(int argc, char *argv[])
 
         case 's':
         {
-            wiringPiSetup();
             long int time;
             long int timee;
 
             int ChannelsData[16];
             int sbusData[25];
             int lose;
-            Sbus newSBUS(optarg, SbusMode::Normal);
+            Sbus newSBUS(optarg);
             while (true)
             {
                 time = micros();
@@ -79,61 +79,32 @@ int main(int argc, char *argv[])
         }
         break;
 
-        case 'S':
-        {
-            wiringPiSetup();
-            long int time;
-            long int timee;
-
-            int ChannelsData[16];
-            int sbusData[25];
-            int lose;
-
-            Sbus newSBUS(optarg, SbusMode::HighSpeed);
-            while (true)
-            {
-                lose = newSBUS.SbusQuickRead();
-                if (lose == 15)
-                {
-                    time = micros();
-                    for (size_t i = 0; i < 25; i++)
-                    {
-                        sbusData[i] = newSBUS.SbusQuickRead();
-                        usleep(50);
-                    }
-                    newSBUS.SbusPaser(sbusData, ChannelsData);
-                    timee = micros();
-                    for (size_t i = 0; i < 16; i++)
-                    {
-                        std::cout << ChannelsData[i] << " ";
-                    }
-                    std::cout << timee - time << " ";
-                    std::cout << " \n";
-                }
-            }
-        }
-        break;
-
         case 'g':
         {
             long int time;
             long int timee;
+            int mal = 0;
             std::string GPSData;
+            std::string dataP[10];
             GPSUart myUart(optarg);
+            myUart.GPSReOpen();
             while (true)
             {
                 time = micros();
-                for (size_t i = 0; i < 6; i++)
+                if (mal == 10)
                 {
+                    mal = 0;
                     myUart.GPSRead(GPSData);
                     std::cout << GPSData;
+                    long int timees = micros();
+                    std::cout << "last frame time : " << timees - time << "\n";
                 }
                 timee = micros();
-                std::cout << "last frame time : " << timee - time << "\n";
-                if ((timee - time) > 150000)
-                    usleep(200000);
+                mal++;
+                if ((timee - time) > 15000)
+                    usleep(1500);
                 else
-                    usleep(200000 - (timee - time));
+                    usleep(20000 - (timee - time));
             }
         }
         break;
@@ -146,7 +117,6 @@ int main(int argc, char *argv[])
             std::string GPSData;
             GPSUartData mydata;
             GPSUart *myUart = new GPSUart(optarg);
-            sleep(5);
             std::thread test([&] {
                 mal = 10;
                 myUart->GPSReOpen();
@@ -156,8 +126,9 @@ int main(int argc, char *argv[])
                     if (mal == 10)
                     {
                         mal = 0;
-                        mydata = myUart->GPSParse();
+                        mydata = myUart->GPSParse_Old();
                         std::cout << "satillites: " << mydata.satillitesCount << " ";
+                        std::cout << "DataError: " << mydata.DataUnCorrect << " ";
                         std::cout << "lat: " << std::setprecision(9) << mydata.lat << " ";
                         std::cout << "lng: " << std::setprecision(10) << mydata.lng << " \n";
                         long int timees = micros();
