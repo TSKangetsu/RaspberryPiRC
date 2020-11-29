@@ -149,63 +149,6 @@ public:
         return InputFrame;
     }
 
-    inline int GPSRead_Old(std::string &GPSData)
-    {
-        if (GPSUart_fd == -1)
-            return -1;
-        FD_ZERO(&fd_Maker);
-        FD_SET(GPSUart_fd, &fd_Maker);
-        lose_frameCount = 0;
-        GPSData = "";
-        char Header[5];
-        while (true)
-        {
-            if (read(GPSUart_fd, &GPSSingleData, sizeof(GPSSingleData)) != -1)
-            {
-                if (GPSSingleData == '$')
-                {
-                    for (size_t i = 0; i < 99; i++)
-                    {
-                        if (read(GPSUart_fd, &GPSSingleData, sizeof(GPSSingleData)) != -1)
-                        {
-                            if (i < 5)
-                            {
-                                Header[i] = GPSSingleData;
-                            }
-                            if (strncmp(Header, "GNTXT", 5) == 0)
-                            {
-                                if (read(GPSUart_fd, &GPSSingleData, sizeof(GPSSingleData)) != -1)
-                                {
-                                    if (GPSSingleData == '\n')
-                                    {
-                                        GPSData = "";
-                                        break;
-                                    }
-                                }
-                                else
-                                    usleep(200);
-                            }
-                            else
-                            {
-                                GPSData += GPSSingleData;
-                                if (GPSSingleData == '\n')
-                                {
-                                    return 1;
-                                }
-                            }
-                        }
-                        else
-                        {
-                            i--;
-                            usleep(200);
-                        }
-                    }
-                }
-            }
-            usleep(500);
-        }
-    }
-
     inline GPSUartData GPSParse()
     {
         int DataCount = 0;
@@ -214,8 +157,8 @@ public:
         myData.DataUnCorrect = false;
         std::string GPSDataStr;
         std::string GPSDataStrError;
-        std::string GPSData[40];
-        std::string GPSDataSub[40];
+        std::string GPSData[256];
+        std::string GPSDataSub[15];
         std::string GPSTmpData[2];
         std::string GPSDataChecker[5];
 
@@ -230,11 +173,10 @@ public:
                 GGADataCrash++;
                 if (GGADataCrash > 1)
                 {
-                    myData.DataUnCorrect = true;
                     break;
                 }
                 dataParese(GPSData[Count], GPSDataChecker, '*');
-                if (GPSDataChecker[2] != "")
+                if (GPSDataChecker[2] == std::string(""))
                 {
                     myData.DataUnCorrect = true;
                 }
@@ -278,49 +220,6 @@ public:
         return myData;
     };
 
-    inline GPSUartData GPSParse_Old()
-    {
-        GPSUartData myData;
-        std::string GPSDataStr;
-        std::string GPSData[40];
-        std::string GPSTmpData[2];
-        for (size_t i = 0; i < 6; i++)
-        {
-            GPSRead_Old(GPSDataStr);
-            if (strncmp("GNGGA", GPSDataStr.c_str(), 5) == 0)
-            {
-                dataParese(GPSDataStr, GPSData, ',');
-
-                GPSData[2] = std::to_string(std::atof(GPSData[2].c_str()) / 100.0);
-                dataParese(GPSData[2], GPSTmpData, '.');
-                myData.lat = std::atof(GPSTmpData[0].c_str()) * 10000.0;
-                myData.lat += std::atof(GPSTmpData[1].c_str()) / 60.0;
-                myData.lat = (int)(myData.lat * 100);
-
-                GPSData[4] = std::to_string(std::atof(GPSData[4].c_str()) / 100.0);
-                dataParese(GPSData[4], GPSTmpData, '.');
-                myData.lng = std::atof(GPSTmpData[0].c_str()) * 10000.0;
-                myData.lng += std::atof(GPSTmpData[1].c_str()) / 60.0;
-                myData.lng = (int)(myData.lng * 100);
-
-                if (strncmp(GPSData[3].c_str(), "N", 1) == 0)
-                    myData.lat_North_Mode = true;
-                else
-                    myData.lat_North_Mode = false;
-                if (strncmp(GPSData[5].c_str(), "E", 1) == 0)
-                    myData.lat_East_Mode = true;
-                else
-                    myData.lat_East_Mode = false;
-                myData.satillitesCount = std::atof(GPSData[7].c_str());
-            }
-            else if (strncmp("GNGLL", GPSDataStr.c_str(), 5) == 0)
-            {
-                dataParese(GPSDataStr, GPSData, ',');
-            }
-        }
-        return myData;
-    }
-
 private:
     int GPSUart_fd;
     char GPSSingleData;
@@ -329,14 +228,12 @@ private:
     std::string GPSLastDebug;
     uint8_t GPSDisableGPGSVConfig[11] = {0xB5, 0x62, 0x06, 0x01, 0x03, 0x00, 0xF0, 0x03, 0x00, 0xFD, 0x15};
     uint8_t GPS5HzConfig[14] = {0xB5, 0x62, 0x06, 0x08, 0x06, 0x00, 0xC8, 0x00, 0x01, 0x00, 0x01, 0x00, 0xDE, 0x6A};
-    uint8_t Set_to_57kbps[28] = {0xB5, 0x62, 0x06, 0x00, 0x14, 0x00, 0x01, 0x00, 0x00, 0x00, 0xD0, 0x08, 0x00, 0x00,
-                                 0x00, 0xE1, 0x00, 0x00, 0x07, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0xE2, 0xE1};
     uint8_t Set_to_115kbps[28] = {0xB5, 0x62, 0x06, 0x00, 0x14, 0x00, 0x01, 0x00, 0x00, 0x00, 0xD0, 0x28, 0x00, 0x00,
                                   0x00, 0xC2, 0x01, 0x00, 0x03, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0xDC, 0x3E};
     int lose_frameCount;
     fd_set fd_Maker;
 
-    void dataParese(std::string data, std::string databuff[256], const char splti)
+    void dataParese(std::string data, std::string *databuff, const char splti)
     {
         std::istringstream f(data);
         std::string s;
@@ -348,7 +245,7 @@ private:
         }
     }
 
-    int dataParese(std::string data, std::string databuff[256], std::string splti)
+    int dataParese(std::string data, std::string *databuff, std::string splti)
     {
         int Count = 0;
         size_t pos = 0;
