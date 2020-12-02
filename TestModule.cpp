@@ -22,7 +22,11 @@ int main(int argc, char *argv[])
                       << "	checkout : https://github.com/TSKangetsu/RPiSingleAPM \n";
             break;
         case 'h':
-            std::cout << "-i /dev/ttyS0 to test ibus, -s /dev/ttyS0 for Sbus normal,-S /dev/ttyS0 for sbus highspeed";
+            std::cout << "-i /dev/ttyS0 for Ibus\n"
+                      << "-s /dev/ttyS0 for Sbus\n"
+                      << "-g /dev/ttyS0 for M8NGPS\n"
+                      << "-G /dev/ttyS0 for M8NGPS Parsed Data\n"
+                      << "-c for QML5883 Compass\n";
             break;
         case 'i':
         {
