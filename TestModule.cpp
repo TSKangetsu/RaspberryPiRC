@@ -8,12 +8,13 @@
 #include "RPiGPS/RPiGPS.hpp"
 #include "RPiSBus/RPiSBus.hpp"
 #include "RPiIBus/RPiIBus.hpp"
+#include "RPiFlow/RPiFlow.hpp"
 
 int main(int argc, char *argv[])
 {
     int argvs;
     wiringPiSetup();
-    while ((argvs = getopt(argc, argv, "vhi:s:g:G:c")) != -1)
+    while ((argvs = getopt(argc, argv, "vhi:s:g:G:cf:")) != -1)
     {
         switch (argvs)
         {
@@ -26,7 +27,8 @@ int main(int argc, char *argv[])
                       << "-s /dev/ttyS0 for Sbus\n"
                       << "-g /dev/ttyS0 for M8NGPS\n"
                       << "-G /dev/ttyS0 for M8NGPS Parsed Data\n"
-                      << "-c for QML5883 Compass\n";
+                      << "-c for QML5883 Compass\n"
+                      << "-f /dev/ttyS0 for MatekSys 3901-L0X\n";
             break;
         case 'i':
         {
@@ -123,7 +125,6 @@ int main(int argc, char *argv[])
             GPSUart *myUart = new GPSUart(optarg);
             mal = 10;
             myUart->GPSReOpen();
-            // sleep(5);
             while (true)
             {
                 time = micros();
@@ -159,6 +160,32 @@ int main(int argc, char *argv[])
             {
                 mycompassTest.GPSI2CCompass_QMC5883LRead(rawx, rawy, rawz);
                 std::cout << rawx << " " << rawy << " " << rawz << "\n";
+            }
+        }
+        break;
+
+        case 'f':
+        {
+            long int time;
+            long int timee;
+            int x;
+            int y;
+            int alt;
+            std::string myData;
+            MSPUartFlow myUart(optarg);
+            while (true)
+            {
+                myUart.MSPDataRead(x, y, alt);
+                std::cout << "x:" << x << " \n";
+                std::cout << "y:" << y << " \n";
+                std::cout << "alt:" << alt << " \n";
+                timee = micros();
+                std::cout << "last frame time : " << timee - time << "\n";
+                time = micros();
+                if ((timee - time) > 35000)
+                    usleep(50);
+                else
+                    usleep(35000 - (timee - time));
             }
         }
         break;

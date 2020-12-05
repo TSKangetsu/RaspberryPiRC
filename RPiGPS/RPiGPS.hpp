@@ -144,7 +144,13 @@ public:
         char TmpData[5000];
         int InputFrame;
         InputFrame = read(GPSUart_fd, &TmpData, sizeof(TmpData));
-        outputData = TmpData;
+        if (InputFrame > 0)
+        {
+            for (size_t i = 0; i < InputFrame; i++)
+            {
+                outputData += TmpData[i];
+            }
+        }
         serialFlush(GPSUart_fd);
         return InputFrame;
     }
