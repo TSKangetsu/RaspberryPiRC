@@ -175,10 +175,11 @@ int main(int argc, char *argv[])
             MSPUartFlow myUart(optarg);
             while (true)
             {
-                myUart.MSPDataRead(x, y, alt);
+                int Status = myUart.MSPDataRead(x, y, alt);
                 std::cout << "x:" << x << " \n";
                 std::cout << "y:" << y << " \n";
                 std::cout << "alt:" << alt << " \n";
+                std::cout << "Status:" << Status << " \n";
                 timee = micros();
                 std::cout << "last frame time : " << timee - time << "\n";
                 time = micros();
