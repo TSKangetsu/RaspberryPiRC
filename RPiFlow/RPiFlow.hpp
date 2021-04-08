@@ -53,7 +53,7 @@ public:
         serialFlush(MSPUart_fd);
     };
 
-    inline int MSPDataRead(int &XOutput, int &YOutput, int &Altitude)
+    inline int MSPDataRead(int &XOutput, int &YOutput, int &Altitude, int &DataQuality)
     {
         bool IsAltitudeFound = false;
         bool IsMovingFound = false;
@@ -85,6 +85,7 @@ public:
                     else if (Header[4] == 2)
                     {
                         int len = (short)((int)Header[7] << 8 | (int)Header[6]);
+                        DataQuality = TmpData[i + 8];
                         YOutput = (short)((int)TmpData[i + 8 + 2] << 8 | (int)TmpData[i + 8 + 1]);
                         XOutput = (short)((int)TmpData[i + 8 + 6] << 8 | (int)TmpData[i + 8 + 5]);
                         IsMovingFound = true;
