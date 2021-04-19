@@ -333,3 +333,38 @@ private:
     char SETPOWER = 0x0A;
     int DataBuffer[2];
 };
+
+class GPSI2CCompass_HMC5883L
+{
+public:
+    inline bool GPSI2CCompass_HMC5883LInit()
+    {
+        CompassFD = wiringPiI2CSetup(0x1E);
+        wiringPiI2CWriteReg16(CompassFD, 0x00, 0x78);
+        wiringPiI2CWriteReg16(CompassFD, 0x01, 0x20);
+        wiringPiI2CWriteReg16(CompassFD, 0x02, 0x00);
+    };
+
+private:
+    inline int GPSI2CCompass_HMC5883LRead(long &RawMAGX, long &RawMAGY, long &RawMAGZ)
+    {
+        DataBuffer[0] = wiringPiI2CReadReg8(CompassFD, 0x03);
+        DataBuffer[1] = wiringPiI2CReadReg8(CompassFD, 0x04);
+        unsigned long TMPRawMAGY = (DataBuffer[0] | DataBuffer[1] << 8) * -1;
+        RawMAGY = (short)TMPRawMAGY;
+        DataBuffer[0] = wiringPiI2CReadReg8(CompassFD, 0x05);
+        DataBuffer[1] = wiringPiI2CReadReg8(CompassFD, 0x06);
+        unsigned long TMPRawMAGZ = (DataBuffer[0] | DataBuffer[1] << 8);
+        RawMAGZ = (short)TMPRawMAGZ;
+        DataBuffer[0] = wiringPiI2CReadReg8(CompassFD, 0x07);
+        DataBuffer[1] = wiringPiI2CReadReg8(CompassFD, 0x08);
+        unsigned long TMPRawMAGX = (DataBuffer[0] | DataBuffer[1] << 8) * -1;
+        RawMAGX = (short)TMPRawMAGX;
+    }
+
+    int CompassFD;
+    char RESET = 0x0B;
+    char SPEED = 0x09;
+    char SETPOWER = 0x0A;
+    int DataBuffer[2];
+};
