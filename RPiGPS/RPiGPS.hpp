@@ -37,7 +37,7 @@ public:
     inline GPSUart(const char *UartDevice)
     {
         GPSDevice = UartDevice;
-        GPSUart_fd = open(UartDevice, O_RDWR | O_NONBLOCK | O_CLOEXEC);
+        GPSUart_fd = open(UartDevice, O_RDWR | O_NOCTTY | O_NDELAY);
         if (GPSUart_fd == -1)
         {
 #ifdef DEBUG
@@ -72,7 +72,8 @@ public:
         }
         else
         {
-            usleep(50000);
+            tcdrain(GPSUart_fd);
+            tcflush(GPSUart_fd, TCOFLUSH);
             if (write(GPSUart_fd, GPS5HzConfig, sizeof(GPS5HzConfig)) == -1)
             {
 #ifdef DEBUG
@@ -82,17 +83,19 @@ public:
             }
             else
             {
-                usleep(50000);
+                tcdrain(GPSUart_fd);
+                tcflush(GPSUart_fd, TCOFLUSH);
                 if (write(GPSUart_fd, Set_to_115kbps, sizeof(Set_to_115kbps)) == -1)
                 {
 #ifdef DEBUG
-                    std::cout << "GPSWriteConfig57Error\n";
+                    std::cout << "GPSWriteConfig115Error\n";
 #endif
-                    throw std::string("GPSWriteConfig57Error");
+                    throw std::string("GPSWriteConfig115Error");
                 }
                 else
                 {
-                    usleep(50000);
+                    tcdrain(GPSUart_fd);
+                    tcflush(GPSUart_fd, TCOFLUSH);
                     close(GPSUart_fd);
                     GPSUart_fd = -1;
                 }
@@ -100,14 +103,14 @@ public:
         };
     }
 
-    inline int GPSReOpen()
+    inline void GPSReOpen()
     {
         if (GPSUart_fd != -1)
         {
             close(GPSUart_fd);
             GPSUart_fd = -1;
         }
-        GPSUart_fd = open(GPSDevice.c_str(), O_RDWR | O_NONBLOCK | O_CLOEXEC);
+        GPSUart_fd = open(GPSDevice.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);
         if (GPSUart_fd == -1)
         {
 #ifdef DEBUG
@@ -122,8 +125,8 @@ public:
             close(GPSUart_fd);
             GPSUart_fd = -1;
         }
-        options_57.c_cflag = B115200 | CS8 | CLOCAL | CREAD | CSTOPB;
-        options_57.c_iflag = BRKINT | IXON | IXOFF;
+        options_57.c_cflag = B115200 | CS8 | CLOCAL | CREAD;
+        options_57.c_iflag = IGNPAR;
         options_57.c_oflag = 0;
         options_57.c_lflag = 0;
         if (0 != ioctl(GPSUart_fd, TCSETS2, &options_57))
@@ -131,7 +134,41 @@ public:
             close(GPSUart_fd);
             GPSUart_fd = -1;
         }
-        serialFlush(GPSUart_fd);
+        tcflush(GPSUart_fd, TCIOFLUSH);
+        GPSPeeker = fdopen(GPSUart_fd, "r");
+    }
+
+    inline bool GPSCheckDataAvaliable()
+    {
+        int c[6];
+        char GNRMC[6];
+        int bytes_avaiable;
+        ioctl(GPSUart_fd, FIONREAD, &bytes_avaiable);
+        if (bytes_avaiable > 30)
+        {
+            for (size_t i = 0; i < 6; i++)
+            {
+                c[i] = fgetc(GPSPeeker);
+                GNRMC[i] = (char)c[i];
+            }
+            for (size_t i = 0; i < 6; i++)
+            {
+                ungetc(c[i], GPSPeeker);
+            }
+            if (strncmp(GNRMC, "$GNRMC", 6) == 0 || strncmp(GNRMC, "CMRNG$", 6) == 0)
+            {
+                return true;
+            }
+            else
+            {
+                GPSReOpen();
+                return false;
+            }
+        }
+        else
+        {
+            return false;
+        }
     }
 
     inline int GPSRead(std::string &outputData)
@@ -141,18 +178,26 @@ public:
             return -1;
         FD_ZERO(&fd_Maker);
         FD_SET(GPSUart_fd, &fd_Maker);
-        char TmpData[5000];
-        int InputFrame;
-        InputFrame = read(GPSUart_fd, &TmpData, sizeof(TmpData));
-        if (InputFrame > 0)
+        //================================================$GNRMC
+        if (GPSCheckDataAvaliable())
         {
-            for (size_t i = 0; i < InputFrame; i++)
+            int bytes_avaiable;
+            ioctl(GPSUart_fd, FIONREAD, &bytes_avaiable);
+            //================================================
+            char TmpData[bytes_avaiable];
+            int InputFrame;
+            InputFrame = read(GPSUart_fd, &TmpData, bytes_avaiable);
+            if (InputFrame > 0)
             {
-                outputData += TmpData[i];
+                for (size_t i = 0; i < InputFrame; i++)
+                {
+                    outputData += TmpData[i];
+                }
             }
+            tcflush(GPSUart_fd, TCIOFLUSH);
+            return InputFrame;
         }
-        serialFlush(GPSUart_fd);
-        return InputFrame;
+        return -1;
     }
 
     inline GPSUartData GPSParse()
@@ -238,6 +283,7 @@ private:
                                   0x00, 0xC2, 0x01, 0x00, 0x03, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0xDC, 0x3E};
     int lose_frameCount;
     fd_set fd_Maker;
+    FILE *GPSPeeker;
 
     void dataParese(std::string data, std::string *databuff, const char splti, int MaxSize)
     {
@@ -310,7 +356,7 @@ public:
         return true;
     }
 
-    inline int GPSI2CCompass_QMC5883LRead(long &RawMAGX, long &RawMAGY, long &RawMAGZ)
+    inline void GPSI2CCompass_QMC5883LRead(long &RawMAGX, long &RawMAGY, long &RawMAGZ)
     {
         DataBuffer[0] = wiringPiI2CReadReg8(CompassFD, 0x00);
         DataBuffer[1] = wiringPiI2CReadReg8(CompassFD, 0x01);
@@ -337,7 +383,7 @@ private:
 class GPSI2CCompass_HMC5883L
 {
 public:
-    inline bool GPSI2CCompass_HMC5883LInit()
+    inline void GPSI2CCompass_HMC5883LInit()
     {
         CompassFD = wiringPiI2CSetup(0x1E);
         wiringPiI2CWriteReg16(CompassFD, 0x00, 0x78);
@@ -346,7 +392,7 @@ public:
     };
 
 private:
-    inline int GPSI2CCompass_HMC5883LRead(long &RawMAGX, long &RawMAGY, long &RawMAGZ)
+    inline void GPSI2CCompass_HMC5883LRead(long &RawMAGX, long &RawMAGY, long &RawMAGZ)
     {
         DataBuffer[0] = wiringPiI2CReadReg8(CompassFD, 0x03);
         DataBuffer[1] = wiringPiI2CReadReg8(CompassFD, 0x04);

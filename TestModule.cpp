@@ -89,28 +89,21 @@ int main(int argc, char *argv[])
         {
             long int time;
             long int timee;
-            int mal = 0;
             std::string GPSData;
             std::string dataP[10];
             GPSUart myUart(optarg);
             myUart.GPSReOpen();
             while (true)
             {
-                time = micros();
-                if (mal == 10)
+                if (myUart.GPSCheckDataAvaliable())
                 {
-                    mal = 0;
+                    long int timees = micros();
+                    std::cout << "\nlast frame time Get : " << timees - time << "\n";
                     myUart.GPSRead(GPSData);
                     std::cout << GPSData;
-                    long int timees = micros();
-                    std::cout << "last frame time : " << timees - time << "\n";
+                    time = micros();
                 }
-                timee = micros();
-                mal++;
-                if ((timee - time) > 15000)
-                    usleep(1500);
-                else
-                    usleep(20000 - (timee - time));
+                usleep(180000);
             }
         }
         break;
@@ -119,32 +112,25 @@ int main(int argc, char *argv[])
         {
             long int time;
             long int timee;
-            int mal = 0;
             std::string GPSData;
             GPSUartData mydata;
             GPSUart *myUart = new GPSUart(optarg);
-            mal = 10;
             myUart->GPSReOpen();
             while (true)
             {
                 time = micros();
-                if (mal == 10)
-                {
-                    mal = 0;
-                    mydata = myUart->GPSParse();
-                    std::cout << "satillites: " << mydata.satillitesCount << " ";
-                    std::cout << "DataError: " << mydata.DataUnCorrect << " ";
-                    std::cout << "lat: " << std::setprecision(9) << mydata.lat << " ";
-                    std::cout << "lng: " << std::setprecision(10) << mydata.lng << " \n";
-                    long int timees = micros();
-                    std::cout << "last frame time : " << timees - time << "\n";
-                }
+                mydata = myUart->GPSParse();
+                std::cout << "satillites: " << mydata.satillitesCount << " ";
+                std::cout << "DataError: " << mydata.DataUnCorrect << " ";
+                std::cout << "lat: " << std::setprecision(9) << mydata.lat << " ";
+                std::cout << "lng: " << std::setprecision(10) << mydata.lng << " \n";
+                long int timees = micros();
+                std::cout << "last frame time : " << timees - time << "\n";
                 timee = micros();
-                mal++;
-                if ((timee - time) > 15000)
+                if ((timee - time) > 200000)
                     usleep(1500);
                 else
-                    usleep(20000 - (timee - time));
+                    usleep(200000 - (timee - time));
             }
         }
         break;
