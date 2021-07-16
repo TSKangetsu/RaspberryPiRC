@@ -422,16 +422,23 @@ public:
     void CompassUpdate()
     {
         CompassRead(RawMAGIX, RawMAGIY, RawMAGIZ);
-        RawMAGIX -= CompassCalibrationData[CompassXOffset];
-        RawMAGIY -= CompassCalibrationData[CompassYOffset];
-        RawMAGIY *= CompassCalibrationData[CompassYScaler];
-        RawMAGIZ -= CompassCalibrationData[CompassZOffset];
-        RawMAGIZ *= CompassCalibrationData[CompassZScaler];
+        RawMAGIX += CompassCalibrationData[CompassXOffset];
+        RawMAGIX *= -1;
+
+        RawMAGIY += CompassCalibrationData[CompassYOffset];
+        RawMAGIY *= -1 * CompassCalibrationData[CompassYScaler];
+
+        RawMAGIZ += CompassCalibrationData[CompassZOffset];
+        RawMAGIZ *= -1 * CompassCalibrationData[CompassZScaler];
     }
 
     void CompassGetUnfixAngle(double &UnFixAngle)
     {
-        UnFixAngle = atan2(RawMAGIX, RawMAGIY) * 180.f / PI;
+        UnFixAngle = atan2((RawMAGIX), (RawMAGIY)) * 180.f / PI;
+        if (UnFixAngle < 0)
+            UnFixAngle += 360;
+        else if (UnFixAngle >= 360)
+            UnFixAngle -= 360;
     }
 
     void CompassGetFixAngle(double &FixAngle, double CompassRoll, double CompassPitch)
@@ -441,7 +448,11 @@ public:
                          RawMAGIZ * cos(CompassRoll * (PI / 180.f)) * sin(-1 * CompassPitch * (PI / 180.f));
         double MAGYFix = RawMAGIY * cos(CompassRoll * (PI / 180.f)) +
                          RawMAGIZ * sin(CompassRoll * (PI / 180.f));
-        FixAngle = atan2(MAGYFix, MAGXFix) * 180.f / PI;
+        FixAngle = atan2(MAGXFix, MAGYFix) * 180.f / PI;
+        if (FixAngle < 0)
+            FixAngle += 360;
+        else if (FixAngle >= 360)
+            FixAngle -= 360;
     }
 
     void CompassGetRaw(long &RawMAGX, long &RawMAGY, long &RawMAGZ)
