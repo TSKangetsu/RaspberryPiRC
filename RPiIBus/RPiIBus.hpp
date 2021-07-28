@@ -84,6 +84,11 @@ public:
         }
     }
 
+    inline ~Ibus()
+    {
+        close(Ibus_fd);
+    };
+
 private:
     int Ibus_fd;
     int InputBuffer;

@@ -109,6 +109,11 @@ public:
         return Status;
     };
 
+    inline ~MSPUartFlow()
+    {
+        close(MSPUart_fd);
+    };
+
 private:
     fd_set fd_Maker;
     int MSPUart_fd;

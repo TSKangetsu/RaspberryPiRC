@@ -283,6 +283,11 @@ public:
         return myData;
     };
 
+    inline ~GPSUart()
+    {
+        close(GPSUart_fd);
+    }
+
 private:
     int GPSUart_fd;
     char GPSSingleData;
