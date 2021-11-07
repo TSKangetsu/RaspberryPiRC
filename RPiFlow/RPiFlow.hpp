@@ -2,7 +2,6 @@
 #ifdef DEBUG
 #include <iostream>
 #endif
-#include <wiringSerial.h>
 #include <fcntl.h>
 #include <string>
 #include <sstream>
@@ -12,8 +11,6 @@
 #include <stdint.h>
 #include <string.h>
 #include <linux/i2c-dev.h>
-#include <wiringPiI2C.h>
-#include <wiringSerial.h>
 #define termios asmtermios
 #include <asm/termbits.h>
 #undef termios
@@ -50,7 +47,6 @@ public:
             close(MSPUart_fd);
             MSPUart_fd = -1;
         }
-        serialFlush(MSPUart_fd);
     };
 
     inline int MSPDataRead(int &XOutput, int &YOutput, int &Altitude, int &DataQuality)
@@ -105,7 +101,6 @@ public:
         {
             Status = -1;
         }
-        serialFlush(MSPUart_fd);
         return Status;
     };
 

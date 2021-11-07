@@ -2,7 +2,6 @@
 #ifdef DEBUG
 #include <iostream>
 #endif
-#include <wiringSerial.h>
 #include <fcntl.h>
 #include <string>
 #include <sstream>
@@ -13,8 +12,6 @@
 #include <string.h>
 #include <thread>
 #include <linux/i2c-dev.h>
-#include <wiringPiI2C.h>
-#include <wiringSerial.h>
 #include <iostream>
 #define termios asmtermios
 #include <asm/termbits.h>
@@ -279,7 +276,6 @@ public:
             Count++;
             GPSLastDebug = GPSDataStr;
         }
-        serialFlush(GPSUart_fd);
         return myData;
     };
 
@@ -336,183 +332,183 @@ private:
     }
 };
 
-class GPSI2CCompass
-{
-public:
-    GPSI2CCompass(int Compass_Type)
-    {
-        CompassType = Compass_Type;
-        switch (CompassType)
-        {
-        case COMPASS_QMC5883L:
-        {
-            CompassFD = wiringPiI2CSetup(QMC5883LADDR);
-            wiringPiI2CWriteReg16(CompassFD, 0x0A, 0x80);
-            wiringPiI2CWriteReg16(CompassFD, 0x0B, 0x01);
-            wiringPiI2CWriteReg16(CompassFD, 0x09, 0x0D);
-        }
-        break;
-        case COMPASS_HMC5883L:
-        {
-            CompassFD = wiringPiI2CSetup(HMC5883LADDR);
-            wiringPiI2CWriteReg16(CompassFD, 0x00, 0x78);
-            wiringPiI2CWriteReg16(CompassFD, 0x01, 0x20);
-            wiringPiI2CWriteReg16(CompassFD, 0x02, 0x00);
-        }
-        break;
-        }
-    };
+// class GPSI2CCompass
+// {
+// public:
+//     GPSI2CCompass(int Compass_Type)
+//     {
+//         CompassType = Compass_Type;
+//         switch (CompassType)
+//         {
+//         case COMPASS_QMC5883L:
+//         {
+//             CompassFD = wiringPiI2CSetup(QMC5883LADDR);
+//             wiringPiI2CWriteReg16(CompassFD, 0x0A, 0x80);
+//             wiringPiI2CWriteReg16(CompassFD, 0x0B, 0x01);
+//             wiringPiI2CWriteReg16(CompassFD, 0x09, 0x0D);
+//         }
+//         break;
+//         case COMPASS_HMC5883L:
+//         {
+//             CompassFD = wiringPiI2CSetup(HMC5883LADDR);
+//             wiringPiI2CWriteReg16(CompassFD, 0x00, 0x78);
+//             wiringPiI2CWriteReg16(CompassFD, 0x01, 0x20);
+//             wiringPiI2CWriteReg16(CompassFD, 0x02, 0x00);
+//         }
+//         break;
+//         }
+//     };
 
-    void CompassCalibration(bool Calibrating, double *CalibrationData)
-    {
-        if (Calibrating)
-        {
-            int i;
-            bool finish = true;
-            long compassCal[6] = {0, 0, 0, 0, 0};
-            std::thread compass = std::thread(
-                [&]
-                {
-                    long RAWX;
-                    long RAWY;
-                    long RAWZ;
-                    double compassXOffset;
-                    double compassYOffset;
-                    double compassZOffset;
-                    double compassYScaler;
-                    double compassZScaler;
-                    while (finish)
-                    {
-                        CompassUpdate();
-                        CompassGetRaw(RAWX, RAWY, RAWZ);
-                        compassCal[0] = RAWX < compassCal[0] ? RAWX : compassCal[0];
-                        compassCal[1] = RAWX > compassCal[1] ? RAWX : compassCal[1];
-                        compassCal[2] = RAWY < compassCal[2] ? RAWY : compassCal[2];
-                        compassCal[3] = RAWY > compassCal[3] ? RAWY : compassCal[3];
-                        compassCal[4] = RAWZ < compassCal[4] ? RAWZ : compassCal[4];
-                        compassCal[5] = RAWZ > compassCal[5] ? RAWZ : compassCal[5];
-                        usleep(10000);
-                    }
-                    compassYScaler = ((float)compassCal[1] - compassCal[0]) / (compassCal[3] - compassCal[2]);
-                    compassZScaler = ((float)compassCal[1] - compassCal[0]) / (compassCal[5] - compassCal[4]);
-                    compassXOffset = (compassCal[1] - compassCal[0]) / 2 - compassCal[1];
-                    compassYOffset = (((float)compassCal[3] - compassCal[2]) / 2 - compassCal[3]) * compassYScaler;
-                    compassZOffset = (((float)compassCal[5] - compassCal[4]) / 2 - compassCal[5]) * compassZScaler;
+//     void CompassCalibration(bool Calibrating, double *CalibrationData)
+//     {
+//         if (Calibrating)
+//         {
+//             int i;
+//             bool finish = true;
+//             long compassCal[6] = {0, 0, 0, 0, 0};
+//             std::thread compass = std::thread(
+//                 [&]
+//                 {
+//                     long RAWX;
+//                     long RAWY;
+//                     long RAWZ;
+//                     double compassXOffset;
+//                     double compassYOffset;
+//                     double compassZOffset;
+//                     double compassYScaler;
+//                     double compassZScaler;
+//                     while (finish)
+//                     {
+//                         CompassUpdate();
+//                         CompassGetRaw(RAWX, RAWY, RAWZ);
+//                         compassCal[0] = RAWX < compassCal[0] ? RAWX : compassCal[0];
+//                         compassCal[1] = RAWX > compassCal[1] ? RAWX : compassCal[1];
+//                         compassCal[2] = RAWY < compassCal[2] ? RAWY : compassCal[2];
+//                         compassCal[3] = RAWY > compassCal[3] ? RAWY : compassCal[3];
+//                         compassCal[4] = RAWZ < compassCal[4] ? RAWZ : compassCal[4];
+//                         compassCal[5] = RAWZ > compassCal[5] ? RAWZ : compassCal[5];
+//                         usleep(10000);
+//                     }
+//                     compassYScaler = ((float)compassCal[1] - compassCal[0]) / (compassCal[3] - compassCal[2]);
+//                     compassZScaler = ((float)compassCal[1] - compassCal[0]) / (compassCal[5] - compassCal[4]);
+//                     compassXOffset = (compassCal[1] - compassCal[0]) / 2 - compassCal[1];
+//                     compassYOffset = (((float)compassCal[3] - compassCal[2]) / 2 - compassCal[3]) * compassYScaler;
+//                     compassZOffset = (((float)compassCal[5] - compassCal[4]) / 2 - compassCal[5]) * compassZScaler;
 
-                    CalibrationData[CompassYScaler] = compassYScaler;
-                    CalibrationData[CompassZScaler] = compassZScaler;
-                    CalibrationData[CompassXOffset] = compassXOffset;
-                    CalibrationData[CompassYOffset] = compassYOffset;
-                    CalibrationData[CompassZOffset] = compassZOffset;
-                });
-            std::cin >> i;
-            finish = false;
-            compass.join();
-            std::cout << "compassYScaler :" << CalibrationData[CompassYScaler] << "\n";
-            std::cout << "compassZScaler :" << CalibrationData[CompassZScaler] << "\n";
-            std::cout << "compassXOffset :" << CalibrationData[CompassXOffset] << "\n";
-            std::cout << "compassYOffset :" << CalibrationData[CompassYOffset] << "\n";
-            std::cout << "compassZOffset :" << CalibrationData[CompassZOffset] << "\n";
-        }
-        else
-        {
-            CompassCalibrationData[CompassYScaler] = CalibrationData[CompassYScaler];
-            CompassCalibrationData[CompassZScaler] = CalibrationData[CompassZScaler];
-            CompassCalibrationData[CompassXOffset] = CalibrationData[CompassXOffset];
-            CompassCalibrationData[CompassYOffset] = CalibrationData[CompassYOffset];
-            CompassCalibrationData[CompassZOffset] = CalibrationData[CompassZOffset];
-        }
-    }
+//                     CalibrationData[CompassYScaler] = compassYScaler;
+//                     CalibrationData[CompassZScaler] = compassZScaler;
+//                     CalibrationData[CompassXOffset] = compassXOffset;
+//                     CalibrationData[CompassYOffset] = compassYOffset;
+//                     CalibrationData[CompassZOffset] = compassZOffset;
+//                 });
+//             std::cin >> i;
+//             finish = false;
+//             compass.join();
+//             std::cout << "compassYScaler :" << CalibrationData[CompassYScaler] << "\n";
+//             std::cout << "compassZScaler :" << CalibrationData[CompassZScaler] << "\n";
+//             std::cout << "compassXOffset :" << CalibrationData[CompassXOffset] << "\n";
+//             std::cout << "compassYOffset :" << CalibrationData[CompassYOffset] << "\n";
+//             std::cout << "compassZOffset :" << CalibrationData[CompassZOffset] << "\n";
+//         }
+//         else
+//         {
+//             CompassCalibrationData[CompassYScaler] = CalibrationData[CompassYScaler];
+//             CompassCalibrationData[CompassZScaler] = CalibrationData[CompassZScaler];
+//             CompassCalibrationData[CompassXOffset] = CalibrationData[CompassXOffset];
+//             CompassCalibrationData[CompassYOffset] = CalibrationData[CompassYOffset];
+//             CompassCalibrationData[CompassZOffset] = CalibrationData[CompassZOffset];
+//         }
+//     }
 
-    void CompassUpdate()
-    {
-        CompassRead(RawMAGIX, RawMAGIY, RawMAGIZ);
-        RawMAGIX += CompassCalibrationData[CompassXOffset];
-        RawMAGIX *= -1;
+//     void CompassUpdate()
+//     {
+//         CompassRead(RawMAGIX, RawMAGIY, RawMAGIZ);
+//         RawMAGIX += CompassCalibrationData[CompassXOffset];
+//         RawMAGIX *= -1;
 
-        RawMAGIY += CompassCalibrationData[CompassYOffset];
-        RawMAGIY *= -1 * CompassCalibrationData[CompassYScaler];
+//         RawMAGIY += CompassCalibrationData[CompassYOffset];
+//         RawMAGIY *= -1 * CompassCalibrationData[CompassYScaler];
 
-        RawMAGIZ += CompassCalibrationData[CompassZOffset];
-        RawMAGIZ *= -1 * CompassCalibrationData[CompassZScaler];
-    }
+//         RawMAGIZ += CompassCalibrationData[CompassZOffset];
+//         RawMAGIZ *= -1 * CompassCalibrationData[CompassZScaler];
+//     }
 
-    void CompassGetUnfixAngle(double &UnFixAngle)
-    {
-        UnFixAngle = atan2((RawMAGIX), (RawMAGIY)) * 180.f / PI;
-        if (UnFixAngle < 0)
-            UnFixAngle += 360;
-        else if (UnFixAngle >= 360)
-            UnFixAngle -= 360;
-    }
+//     void CompassGetUnfixAngle(double &UnFixAngle)
+//     {
+//         UnFixAngle = atan2((RawMAGIX), (RawMAGIY)) * 180.f / PI;
+//         if (UnFixAngle < 0)
+//             UnFixAngle += 360;
+//         else if (UnFixAngle >= 360)
+//             UnFixAngle -= 360;
+//     }
 
-    void CompassGetFixAngle(double &FixAngle, double CompassRoll, double CompassPitch)
-    {
-        double MAGXFix = RawMAGIX * cos(-1 * CompassPitch * (PI / 180.f)) +
-                         RawMAGIY * sin(CompassRoll * (PI / 180.f)) * sin(-1 * CompassPitch * (PI / 180.f)) -
-                         RawMAGIZ * cos(CompassRoll * (PI / 180.f)) * sin(-1 * CompassPitch * (PI / 180.f));
-        double MAGYFix = RawMAGIY * cos(CompassRoll * (PI / 180.f)) +
-                         RawMAGIZ * sin(CompassRoll * (PI / 180.f));
-        FixAngle = atan2(MAGXFix, MAGYFix) * 180.f / PI;
-        if (FixAngle < 0)
-            FixAngle += 360;
-        else if (FixAngle >= 360)
-            FixAngle -= 360;
-    }
+//     void CompassGetFixAngle(double &FixAngle, double CompassRoll, double CompassPitch)
+//     {
+//         double MAGXFix = RawMAGIX * cos(-1 * CompassPitch * (PI / 180.f)) +
+//                          RawMAGIY * sin(CompassRoll * (PI / 180.f)) * sin(-1 * CompassPitch * (PI / 180.f)) -
+//                          RawMAGIZ * cos(CompassRoll * (PI / 180.f)) * sin(-1 * CompassPitch * (PI / 180.f));
+//         double MAGYFix = RawMAGIY * cos(CompassRoll * (PI / 180.f)) +
+//                          RawMAGIZ * sin(CompassRoll * (PI / 180.f));
+//         FixAngle = atan2(MAGXFix, MAGYFix) * 180.f / PI;
+//         if (FixAngle < 0)
+//             FixAngle += 360;
+//         else if (FixAngle >= 360)
+//             FixAngle -= 360;
+//     }
 
-    void CompassGetRaw(long &RawMAGX, long &RawMAGY, long &RawMAGZ)
-    {
-        RawMAGX = RawMAGIX;
-        RawMAGY = RawMAGIY;
-        RawMAGZ = RawMAGIZ;
-    }
+//     void CompassGetRaw(long &RawMAGX, long &RawMAGY, long &RawMAGZ)
+//     {
+//         RawMAGX = RawMAGIX;
+//         RawMAGY = RawMAGIY;
+//         RawMAGZ = RawMAGIZ;
+//     }
 
-private:
-    void CompassRead(long &RawMAGX, long &RawMAGY, long &RawMAGZ)
-    {
-        switch (CompassType)
-        {
-        case COMPASS_QMC5883L:
-        {
-            DataBuffer[0] = wiringPiI2CReadReg8(CompassFD, 0x00);
-            DataBuffer[1] = wiringPiI2CReadReg8(CompassFD, 0x01);
-            unsigned long TMPRawMAGX = (DataBuffer[0] | DataBuffer[1] << 8);
-            RawMAGX = (short)TMPRawMAGX;
-            DataBuffer[0] = wiringPiI2CReadReg8(CompassFD, 0x02);
-            DataBuffer[1] = wiringPiI2CReadReg8(CompassFD, 0x03);
-            unsigned long TMPRawMAGY = (DataBuffer[0] | DataBuffer[1] << 8);
-            RawMAGY = (short)TMPRawMAGY;
-            DataBuffer[0] = wiringPiI2CReadReg8(CompassFD, 0x04);
-            DataBuffer[1] = wiringPiI2CReadReg8(CompassFD, 0x05);
-            unsigned long TMPRawMAGZ = (DataBuffer[0] | DataBuffer[1] << 8);
-            RawMAGZ = (short)TMPRawMAGZ;
-        }
-        break;
-        case COMPASS_HMC5883L:
-        {
-            DataBuffer[0] = wiringPiI2CReadReg8(CompassFD, 0x03);
-            DataBuffer[1] = wiringPiI2CReadReg8(CompassFD, 0x04);
-            unsigned long TMPRawMAGY = (DataBuffer[0] | DataBuffer[1] << 8) * -1;
-            RawMAGY = (short)TMPRawMAGY;
-            DataBuffer[0] = wiringPiI2CReadReg8(CompassFD, 0x05);
-            DataBuffer[1] = wiringPiI2CReadReg8(CompassFD, 0x06);
-            unsigned long TMPRawMAGZ = (DataBuffer[0] | DataBuffer[1] << 8);
-            RawMAGZ = (short)TMPRawMAGZ;
-            DataBuffer[0] = wiringPiI2CReadReg8(CompassFD, 0x07);
-            DataBuffer[1] = wiringPiI2CReadReg8(CompassFD, 0x08);
-            unsigned long TMPRawMAGX = (DataBuffer[0] | DataBuffer[1] << 8) * -1;
-            RawMAGX = (short)TMPRawMAGX;
-        }
-        break;
-        }
-    }
+// private:
+//     void CompassRead(long &RawMAGX, long &RawMAGY, long &RawMAGZ)
+//     {
+//         switch (CompassType)
+//         {
+//         case COMPASS_QMC5883L:
+//         {
+//             DataBuffer[0] = wiringPiI2CReadReg8(CompassFD, 0x00);
+//             DataBuffer[1] = wiringPiI2CReadReg8(CompassFD, 0x01);
+//             unsigned long TMPRawMAGX = (DataBuffer[0] | DataBuffer[1] << 8);
+//             RawMAGX = (short)TMPRawMAGX;
+//             DataBuffer[0] = wiringPiI2CReadReg8(CompassFD, 0x02);
+//             DataBuffer[1] = wiringPiI2CReadReg8(CompassFD, 0x03);
+//             unsigned long TMPRawMAGY = (DataBuffer[0] | DataBuffer[1] << 8);
+//             RawMAGY = (short)TMPRawMAGY;
+//             DataBuffer[0] = wiringPiI2CReadReg8(CompassFD, 0x04);
+//             DataBuffer[1] = wiringPiI2CReadReg8(CompassFD, 0x05);
+//             unsigned long TMPRawMAGZ = (DataBuffer[0] | DataBuffer[1] << 8);
+//             RawMAGZ = (short)TMPRawMAGZ;
+//         }
+//         break;
+//         case COMPASS_HMC5883L:
+//         {
+//             DataBuffer[0] = wiringPiI2CReadReg8(CompassFD, 0x03);
+//             DataBuffer[1] = wiringPiI2CReadReg8(CompassFD, 0x04);
+//             unsigned long TMPRawMAGY = (DataBuffer[0] | DataBuffer[1] << 8) * -1;
+//             RawMAGY = (short)TMPRawMAGY;
+//             DataBuffer[0] = wiringPiI2CReadReg8(CompassFD, 0x05);
+//             DataBuffer[1] = wiringPiI2CReadReg8(CompassFD, 0x06);
+//             unsigned long TMPRawMAGZ = (DataBuffer[0] | DataBuffer[1] << 8);
+//             RawMAGZ = (short)TMPRawMAGZ;
+//             DataBuffer[0] = wiringPiI2CReadReg8(CompassFD, 0x07);
+//             DataBuffer[1] = wiringPiI2CReadReg8(CompassFD, 0x08);
+//             unsigned long TMPRawMAGX = (DataBuffer[0] | DataBuffer[1] << 8) * -1;
+//             RawMAGX = (short)TMPRawMAGX;
+//         }
+//         break;
+//         }
+//     }
 
-    long RawMAGIX;
-    long RawMAGIY;
-    long RawMAGIZ;
+//     long RawMAGIX;
+//     long RawMAGIY;
+//     long RawMAGIZ;
 
-    int CompassFD;
-    int DataBuffer[2];
-    int CompassType;
-    double CompassCalibrationData[10] = {0};
-};
+//     int CompassFD;
+//     int DataBuffer[2];
+//     int CompassType;
+//     double CompassCalibrationData[10] = {0};
+// };
