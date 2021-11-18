@@ -3,6 +3,7 @@
 #include <iostream>
 #include <iomanip>
 #include <thread>
+#include <csignal>
 #include <wiringPi.h>
 #include <wiringSerial.h>
 #include "RPiGPS/RPiGPS.hpp"
@@ -10,11 +11,13 @@
 #include "RPiIBus/RPiIBus.hpp"
 #include "RPiFlow/RPiFlow.hpp"
 
+int signalIn = 0;
+
 int main(int argc, char *argv[])
 {
     int argvs;
     wiringPiSetup();
-    while ((argvs = getopt(argc, argv, "vhi:s:g:G:cf:")) != -1)
+    while ((argvs = getopt(argc, argv, "vhi:s:g:G:cCf:")) != -1)
     {
         switch (argvs)
         {
@@ -135,17 +138,57 @@ int main(int argc, char *argv[])
         }
         break;
 
-        case 'c':
+        case 'C':
         {
-            long rawx;
-            long rawy;
-            long rawz;
-            GPSI2CCompass_QMC5883L mycompassTest;
-            mycompassTest.GPSI2CCompass_QMC5883LInit();
+
+            std::signal(SIGINT, [](int signal) {
+                signalIn = signal;
+            });
+            int rawx = 0;
+            int rawy = 0;
+            int rawz = 0;
+            int calibration[10];
+            calibration[0] = -5000;
+            calibration[2] = -5000;
+            calibration[4] = -5000;
+            calibration[1] = 5000;
+            calibration[3] = 5000;
+            calibration[5] = 5000;
+            GPSI2CCompass mycompassTest("/dev/i2c-1", 0x0d, COMPASS_QMC5883L);
             while (true)
             {
-                mycompassTest.GPSI2CCompass_QMC5883LRead(rawx, rawy, rawz);
+                std::cout << mycompassTest.CompassGetRaw(rawx, rawy, rawz) << "\n";
                 std::cout << rawx << " " << rawy << " " << rawz << "\n";
+                mycompassTest.CompassCalibration(true, calibration);
+                usleep(100000);
+                if (signalIn == SIGINT)
+                    break;
+            }
+            std::cout << "\n\n";
+            std::cout << "XMAX: " << calibration[0] << "\n";
+            std::cout << "YMAX: " << calibration[2] << "\n";
+            std::cout << "ZMAX: " << calibration[4] << "\n";
+            std::cout << "XMIN: " << calibration[1] << "\n";
+            std::cout << "YMIN: " << calibration[3] << "\n";
+            std::cout << "ZMIN: " << calibration[5] << "\n";
+        }
+        break;
+
+        case 'c':
+        {
+            int rawx = 0;
+            int rawy = 0;
+            int rawz = 0;
+            double angleUnfix = 0;
+            GPSI2CCompass mycompassTest("/dev/i2c-1", 0x0d, COMPASS_QMC5883L);
+            mycompassTest.CompassApply(4269,1896,3975,1015,1840,-470);
+            while (true)
+            {
+                std::cout << mycompassTest.CompassGetRaw(rawx, rawy, rawz) << "\n";
+                mycompassTest.CompassGetUnfixAngle(angleUnfix);
+                std::cout << angleUnfix << "\n";
+                std::cout << rawx << " " << rawy << " " << rawz << "\n";
+                sleep(1);
             }
         }
         break;
