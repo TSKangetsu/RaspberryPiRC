@@ -24,11 +24,12 @@
 #define COMPASS_QMC5883L 0
 #define COMPASS_HMC5883L 1
 
-#define CompassYScaler 0
-#define CompassZScaler 1
-#define CompassXOffset 2
-#define CompassYOffset 3
+#define CompassXOffset 0
+#define CompassXScaler 1
+#define CompassYOffset 2
+#define CompassYScaler 3
 #define CompassZOffset 4
+#define CompassZScaler 5
 
 struct GPSUartData
 {
