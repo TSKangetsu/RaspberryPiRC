@@ -430,9 +430,9 @@ public:
 
     void CompassGetFixAngle(double &FixAngle, double CompassRoll, double CompassPitch)
     {
-        double MAGXFix = RawMAGCX * cos(CompassPitch * (PI / -180.f)) +
-                         RawMAGCY * sin(CompassRoll * (PI / -180.f)) * sin(CompassPitch * (PI / -180.f)) -
-                         RawMAGCZ * cos(CompassRoll * (PI / -180.f)) * sin(CompassPitch * (PI / -180.f));
+        double MAGXFix = RawMAGCX * cos(CompassPitch * (PI / 180.f)) +
+                         RawMAGCY * sin(CompassRoll * (PI / -180.f)) * sin(CompassPitch * (PI / 180.f)) -
+                         RawMAGCZ * cos(CompassRoll * (PI / -180.f)) * sin(CompassPitch * (PI / 180.f));
         double MAGYFix = RawMAGCY * cos(CompassRoll * (PI / 180.f)) +
                          RawMAGCZ * sin(CompassRoll * (PI / 180.f));
 
