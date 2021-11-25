@@ -127,6 +127,10 @@ int main(int argc, char *argv[])
                 std::cout << "DataError: " << mydata.DataUnCorrect << " ";
                 std::cout << "lat: " << std::setprecision(9) << mydata.lat << " ";
                 std::cout << "lng: " << std::setprecision(10) << mydata.lng << " \n";
+                std::cout << "ALT: " << std::setprecision(4) << mydata.GPSAlititude << "M "
+                     << "HDOP "<< std::setprecision(4) << mydata.HDOP << " "
+                     << "Quailty: " << mydata.GPSQuality << " "
+                     << "GeoidalSP: " << mydata.GPSGeoidalSP << "\n";
                 long int timees = micros();
                 std::cout << "last frame time : " << timees - time << "\n";
                 timee = micros();
@@ -181,7 +185,7 @@ int main(int argc, char *argv[])
             int rawz = 0;
             double angleUnfix = 0;
             GPSI2CCompass mycompassTest("/dev/i2c-1", 0x0d, COMPASS_QMC5883L);
-            mycompassTest.CompassApply(4269,1896,3975,1015,1840,-470);
+            mycompassTest.CompassApply(4269, 1896, 3975, 1015, 1840, -470);
             while (true)
             {
                 std::cout << mycompassTest.CompassGetRaw(rawx, rawy, rawz) << "\n";

@@ -31,14 +31,31 @@
 #define CompassZOffset 4
 #define CompassZScaler 5
 
+#define GGAData_LAT 2
+#define GGAData_North 3
+#define GGAData_LNG 4
+#define GGAData_East 5
+#define GGAData_Quality 6
+#define GGAData_SATNUM 7
+#define GGAData_HDOP 8
+#define GGAData_Altitude 9
+#define GGAData_GeoidalSP 11
+
 struct GPSUartData
 {
-    int satillitesCount;
-    bool lat_North_Mode;
-    bool lat_East_Mode;
     double lat = 0;
+    bool lat_North_Mode;
     double lng = 0;
-    double alititude = 0;
+    bool lat_East_Mode;
+
+    int GPSQuality = 0;
+
+    int satillitesCount = 0;
+    double  HDOP = 0;
+
+    double GPSAlititude = 0;
+    double GPSGeoidalSP = 0;
+    //
     bool DataUnCorrect;
 };
 
@@ -230,6 +247,7 @@ public:
         int Count = 0;
         while (GPSData[Count] != std::string(";"))
         {
+            // step 1: search GNGGA data
             if (strncmp("$GNGGA", GPSData[Count].c_str(), 5) == 0)
             {
                 GGADataCrash++;
@@ -237,39 +255,42 @@ public:
                 {
                     break;
                 }
+                // step 2: Check CRC data is correct
                 dataParese(GPSData[Count], GPSDataChecker, '*', 5);
+                // TODO: CRC check
                 if (GPSDataChecker[1] == std::string(""))
                 {
                     myData.DataUnCorrect = true;
                 }
-
+                // step 3: get lat
                 dataParese(GPSData[Count], GPSDataSub, ',', 40);
-                std::string GPSDataTmpLat = std::to_string(std::atof(GPSDataSub[2].c_str()) / 100.0);
+                std::string GPSDataTmpLat = std::to_string(std::atof(GPSDataSub[GGAData_LAT].c_str()) / 100.0);
                 dataParese(GPSDataTmpLat, GPSTmpData, '.', 2);
                 myData.lat = std::atof(GPSTmpData[0].c_str()) * 10000.0;
                 myData.lat += std::atof(GPSTmpData[1].c_str()) / 60.0;
                 myData.lat = (int)(myData.lat * 100);
-
-                std::string GPSDataTmpLng = std::to_string(std::atof(GPSDataSub[4].c_str()) / 100.0);
+                // step 4: get lng
+                std::string GPSDataTmpLng = std::to_string(std::atof(GPSDataSub[GGAData_LNG].c_str()) / 100.0);
                 dataParese(GPSDataTmpLng, GPSTmpData, '.', 2);
                 myData.lng = std::atof(GPSTmpData[0].c_str()) * 10000.0;
                 myData.lng += std::atof(GPSTmpData[1].c_str()) / 60.0;
                 myData.lng = (int)(myData.lng * 100);
-
-                if (myData.lat == 0 || myData.lng == 0)
-                {
-                    myData.DataUnCorrect = true;
-                }
-
-                if (strncmp(GPSDataSub[3].c_str(), "N", 1) == 0)
+                // step 5: get North of lat
+                if (strncmp(GPSDataSub[GGAData_North].c_str(), "N", 1) == 0)
                     myData.lat_North_Mode = true;
                 else
                     myData.lat_North_Mode = false;
-                if (strncmp(GPSDataSub[5].c_str(), "E", 1) == 0)
+                // step 6: get East of lng
+                if (strncmp(GPSDataSub[GGAData_East].c_str(), "E", 1) == 0)
                     myData.lat_East_Mode = true;
                 else
                     myData.lat_East_Mode = false;
-                myData.satillitesCount = std::atof(GPSDataSub[7].c_str());
+                // step ...parse other ...
+                myData.GPSQuality = std::atof(GPSDataSub[GGAData_Quality].c_str());
+                myData.satillitesCount = std::atof(GPSDataSub[GGAData_SATNUM].c_str());
+                myData.HDOP = std::atof(GPSDataSub[GGAData_HDOP].c_str());
+                myData.GPSAlititude = std::atof(GPSDataSub[GGAData_Altitude].c_str());
+                myData.GPSGeoidalSP = std::atof(GPSDataSub[GGAData_GeoidalSP].c_str());
             }
             else if (strncmp("$GNGLL", GPSData[Count].c_str(), 5) == 0)
             {
