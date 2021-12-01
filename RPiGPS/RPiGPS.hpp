@@ -51,7 +51,7 @@ struct GPSUartData
     int GPSQuality = 0;
 
     int satillitesCount = 0;
-    double  HDOP = 0;
+    double HDOP = 0;
 
     double GPSAlititude = 0;
     double GPSGeoidalSP = 0;
@@ -410,14 +410,22 @@ public:
     {
         if (Calibrating)
         {
-            CompassRead(RawMAGIX, RawMAGIY, RawMAGIZ);
             // X Y Z MAX MIN
-            CalibratedData[0] = RawMAGIX > CalibratedData[0] ? RawMAGIX : CalibratedData[0];
-            CalibratedData[1] = RawMAGIX < CalibratedData[1] ? RawMAGIX : CalibratedData[1];
-            CalibratedData[2] = RawMAGIY > CalibratedData[2] ? RawMAGIY : CalibratedData[2];
-            CalibratedData[3] = RawMAGIY < CalibratedData[3] ? RawMAGIY : CalibratedData[3];
-            CalibratedData[4] = RawMAGIZ > CalibratedData[4] ? RawMAGIZ : CalibratedData[4];
-            CalibratedData[5] = RawMAGIZ < CalibratedData[5] ? RawMAGIZ : CalibratedData[5];
+            CalibratedData[0] = RawMAGCX > CalibratedData[0] ? RawMAGCX : CalibratedData[0];
+            CalibratedData[1] = RawMAGCX < CalibratedData[1] ? RawMAGCX : CalibratedData[1];
+            CalibratedData[2] = RawMAGCY > CalibratedData[2] ? RawMAGCY : CalibratedData[2];
+            CalibratedData[3] = RawMAGCY < CalibratedData[3] ? RawMAGCY : CalibratedData[3];
+            CalibratedData[4] = RawMAGCZ > CalibratedData[4] ? RawMAGCZ : CalibratedData[4];
+            CalibratedData[5] = RawMAGCZ < CalibratedData[5] ? RawMAGCZ : CalibratedData[5];
+        }
+        else
+        {
+            CalibratedData[5] = RawMAGCZ;
+            CalibratedData[4] = RawMAGCZ;
+            CalibratedData[3] = RawMAGCY;
+            CalibratedData[2] = RawMAGCY;
+            CalibratedData[1] = RawMAGCX;
+            CalibratedData[0] = RawMAGCX;
         }
     }
 
@@ -441,7 +449,7 @@ public:
 
     void CompassGetUnfixAngle(double &UnFixAngle)
     {
-        UnFixAngle = atan2((float)RawMAGCY * -1, (float)RawMAGCX) * 180.f / PI;
+        UnFixAngle = atan2((float)RawMAGCX,(float)-1 * RawMAGCY) * 180.f / PI;
         if (UnFixAngle < 0)
             UnFixAngle += 360.f;
         else if (UnFixAngle >= 360)
@@ -452,8 +460,8 @@ public:
     void CompassGetFixAngle(double &FixAngle, double CompassRoll, double CompassPitch)
     {
         double MAGXFix = RawMAGCX * cos(CompassPitch * (PI / 180.f)) +
-                         RawMAGCY * sin(CompassRoll * (PI / -180.f)) * sin(CompassPitch * (PI / 180.f)) -
-                         RawMAGCZ * cos(CompassRoll * (PI / -180.f)) * sin(CompassPitch * (PI / 180.f));
+                         RawMAGCY * sin(CompassRoll * (PI / 180.f)) * sin(CompassPitch * (PI / 180.f)) -
+                         RawMAGCZ * cos(CompassRoll * (PI / 180.f)) * sin(CompassPitch * (PI / 180.f));
         double MAGYFix = RawMAGCY * cos(CompassRoll * (PI / 180.f)) +
                          RawMAGCZ * sin(CompassRoll * (PI / 180.f));
 
@@ -474,9 +482,9 @@ public:
         int tRawMAGX = ((double)RawMAGIX - CompassCalibrationData[0]) * CompassCalibrationData[7];
         int tRawMAGY = ((double)RawMAGIY - CompassCalibrationData[1]) * CompassCalibrationData[8];
         int tRawMAGZ = ((double)RawMAGIZ - CompassCalibrationData[2]) * CompassCalibrationData[9];
-        RawMAGCX = tRawMAGY * -1;
-        RawMAGCY = tRawMAGX * -1;
-        RawMAGCZ = tRawMAGZ * 1;
+        RawMAGCX = tRawMAGX;
+        RawMAGCY = tRawMAGY;
+        RawMAGCZ = tRawMAGZ;
         RawMAGX = RawMAGCX;
         RawMAGY = RawMAGCY;
         RawMAGZ = RawMAGCZ;

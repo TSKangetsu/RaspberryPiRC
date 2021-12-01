@@ -128,9 +128,9 @@ int main(int argc, char *argv[])
                 std::cout << "lat: " << std::setprecision(9) << mydata.lat << " ";
                 std::cout << "lng: " << std::setprecision(10) << mydata.lng << " \n";
                 std::cout << "ALT: " << std::setprecision(4) << mydata.GPSAlititude << "M "
-                     << "HDOP "<< std::setprecision(4) << mydata.HDOP << " "
-                     << "Quailty: " << mydata.GPSQuality << " "
-                     << "GeoidalSP: " << mydata.GPSGeoidalSP << "\n";
+                          << "HDOP " << std::setprecision(4) << mydata.HDOP << " "
+                          << "Quailty: " << mydata.GPSQuality << " "
+                          << "GeoidalSP: " << mydata.GPSGeoidalSP << "\n";
                 long int timees = micros();
                 std::cout << "last frame time : " << timees - time << "\n";
                 timee = micros();
@@ -159,21 +159,27 @@ int main(int argc, char *argv[])
             calibration[3] = 5000;
             calibration[5] = 5000;
             GPSI2CCompass mycompassTest("/dev/i2c-1", 0x0d, COMPASS_QMC5883L);
+            for (size_t i = 0; i < 2000; i++)
+            {
+                mycompassTest.CompassGetRaw(rawx, rawy, rawz);
+                std::cout << rawx << " " << rawy << " " << rawz << " " << sqrt(rawx * rawx + rawy * rawy + rawz * rawz) << "\n";
+            }
+
             while (true)
             {
-                std::cout << mycompassTest.CompassGetRaw(rawx, rawy, rawz) << "\n";
-                std::cout << rawx << " " << rawy << " " << rawz << "\n";
+                mycompassTest.CompassGetRaw(rawx, rawy, rawz);
+                std::cout << rawx << " " << rawy << " " << rawz << " " << sqrt(rawx * rawx + rawy * rawy + rawz * rawz) << "\n";
                 mycompassTest.CompassCalibration(true, calibration);
-                usleep(100000);
+                usleep(((float)1 / 200 * 1000000));
                 if (signalIn == SIGINT)
                     break;
             }
             std::cout << "\n\n";
             std::cout << "XMAX: " << calibration[0] << "\n";
-            std::cout << "YMAX: " << calibration[2] << "\n";
-            std::cout << "ZMAX: " << calibration[4] << "\n";
             std::cout << "XMIN: " << calibration[1] << "\n";
+            std::cout << "YMAX: " << calibration[2] << "\n";
             std::cout << "YMIN: " << calibration[3] << "\n";
+            std::cout << "ZMAX: " << calibration[4] << "\n";
             std::cout << "ZMIN: " << calibration[5] << "\n";
         }
         break;
@@ -185,14 +191,14 @@ int main(int argc, char *argv[])
             int rawz = 0;
             double angleUnfix = 0;
             GPSI2CCompass mycompassTest("/dev/i2c-1", 0x0d, COMPASS_QMC5883L);
-            mycompassTest.CompassApply(4269, 1896, 3975, 1015, 1840, -470);
+            mycompassTest.CompassApply(3104, 2965, 2338, 2080, 1288, 972);
             while (true)
             {
-                std::cout << mycompassTest.CompassGetRaw(rawx, rawy, rawz) << "\n";
+                mycompassTest.CompassGetRaw(rawx, rawy, rawz);
                 mycompassTest.CompassGetUnfixAngle(angleUnfix);
                 std::cout << angleUnfix << "\n";
                 std::cout << rawx << " " << rawy << " " << rawz << "\n";
-                sleep(1);
+                usleep(((float)1 / 200 * 1000000));
             }
         }
         break;
