@@ -30,6 +30,8 @@
 #define CompassYScaler 3
 #define CompassZOffset 4
 #define CompassZScaler 5
+#define CompassVOffset 6
+#define CompassVScaler 7
 
 #define GGAData_LAT 2
 #define GGAData_North 3
