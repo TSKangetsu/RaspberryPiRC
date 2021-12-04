@@ -357,11 +357,13 @@ private:
     }
 };
 
+#define QMC5883_REG_HRESET 0x0b
 #define QMC5883_REG_RESET 0x0a
 #define QMC5883_REG_MODE 0x09
 #define QMC5883_REG_STATUS 0x06
 #define QMC5883_REG_DATA 0x00
 
+#define QMC5883_OP_HRESET 0x01
 #define QMC5883_OP_RESET 0x80
 #define QMC5883_OP_200HZ 0x1d
 
@@ -372,7 +374,7 @@ public:
     {
         CompassFD = open(i2cDevice, O_RDWR);
         if (ioctl(CompassFD, I2C_SLAVE, i2caddr) < 0)
-            throw - 1;
+            throw -1;
         CompassType = Compass_Type;
         //
         switch (CompassType)
@@ -382,14 +384,14 @@ public:
             {
                 uint8_t wdata[2] = {QMC5883_REG_RESET, QMC5883_OP_RESET};
                 if (write(CompassFD, &wdata, 2) < 0)
-                    throw - 2;
+                    throw -2;
             }
             //
             usleep(1000);
             {
                 uint8_t wdata[2] = {QMC5883_REG_MODE, QMC5883_OP_200HZ};
                 if (write(CompassFD, &wdata, 2) < 0)
-                    throw - 2;
+                    throw -2;
             }
             usleep(5000);
         }
@@ -407,6 +409,30 @@ public:
         CompassCalibrationData[8] = 1;
         CompassCalibrationData[9] = 1;
     };
+
+    void CompassCaliInit()
+    {
+        {
+            uint8_t wdata[2] = {QMC5883_REG_HRESET, QMC5883_OP_HRESET};
+            if (write(CompassFD, &wdata, 2) < 0)
+                throw -2;
+        }
+        usleep(1000);
+        //
+        {
+            uint8_t wdata[2] = {QMC5883_REG_RESET, QMC5883_OP_RESET};
+            if (write(CompassFD, &wdata, 2) < 0)
+                throw -2;
+        }
+        //
+        usleep(1000);
+        {
+            uint8_t wdata[2] = {QMC5883_REG_MODE, QMC5883_OP_200HZ};
+            if (write(CompassFD, &wdata, 2) < 0)
+                throw -2;
+        }
+        usleep(5000);
+    }
 
     void CompassCalibration(bool Calibrating, int *CalibratedData)
     {
@@ -451,7 +477,7 @@ public:
 
     void CompassGetUnfixAngle(double &UnFixAngle)
     {
-        UnFixAngle = atan2((float)RawMAGCX,(float)-1 * RawMAGCY) * 180.f / PI;
+        UnFixAngle = atan2((float)-1 * RawMAGCX, (float)-1 * RawMAGCY) * 180.f / PI;
         if (UnFixAngle < 0)
             UnFixAngle += 360.f;
         else if (UnFixAngle >= 360)

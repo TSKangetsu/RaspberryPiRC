@@ -4,20 +4,26 @@
 #include <iomanip>
 #include <thread>
 #include <csignal>
-#include <wiringPi.h>
-#include <wiringSerial.h>
 #include "RPiGPS/RPiGPS.hpp"
 #include "RPiSBus/RPiSBus.hpp"
 #include "RPiIBus/RPiIBus.hpp"
 #include "RPiFlow/RPiFlow.hpp"
 
 int signalIn = 0;
+int TimestartUpLoad = 0;
+
+int GetTimestamp()
+{
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return ((tv.tv_sec * (uint64_t)1000000 + tv.tv_usec));
+}
 
 int main(int argc, char *argv[])
 {
     int argvs;
-    wiringPiSetup();
-    while ((argvs = getopt(argc, argv, "vhi:s:g:G:cCf:")) != -1)
+    TimestartUpLoad = GetTimestamp();
+    while ((argvs = getopt(argc, argv, "vhi:s:g:G:c:C:f:")) != -1)
     {
         switch (argvs)
         {
@@ -44,7 +50,7 @@ int main(int argc, char *argv[])
             IbusT = new Ibus(optarg);
             while (true)
             {
-                time = micros();
+                time = GetTimestamp() - TimestartUpLoad;
                 lose = IbusT->IbusRead(ChannelsData, 4000, 2);
                 if (lose != -1)
                 {
@@ -52,7 +58,7 @@ int main(int argc, char *argv[])
                     {
                         std::cout << ChannelsData[i] << " ";
                     }
-                    timee = micros();
+                    timee = GetTimestamp() - TimestartUpLoad;
                     std::cout << "T: " << timee - time;
                     std::cout << " \n";
                 }
@@ -71,7 +77,7 @@ int main(int argc, char *argv[])
             Sbus newSBUS(optarg);
             while (true)
             {
-                time = micros();
+                time = GetTimestamp() - TimestartUpLoad;
                 lose = newSBUS.SbusRead(ChannelsData, 4700, 2);
                 if (lose != -1)
                 {
@@ -80,7 +86,7 @@ int main(int argc, char *argv[])
                     {
                         std::cout << ChannelsData[i] << " ";
                     }
-                    timee = micros();
+                    timee = GetTimestamp() - TimestartUpLoad;
                     std::cout << timee - time << " ";
                     std::cout << "\n";
                 }
@@ -100,11 +106,11 @@ int main(int argc, char *argv[])
             {
                 if (myUart.GPSCheckDataAvaliable())
                 {
-                    long int timees = micros();
+                    long int timees = GetTimestamp() - TimestartUpLoad;
                     std::cout << "\nlast frame time Get : " << timees - time << "\n";
                     myUart.GPSRead(GPSData);
                     std::cout << GPSData;
-                    time = micros();
+                    time = GetTimestamp() - TimestartUpLoad;
                 }
                 usleep(180000);
             }
@@ -121,7 +127,7 @@ int main(int argc, char *argv[])
             myUart->GPSReOpen();
             while (true)
             {
-                time = micros();
+                time = GetTimestamp() - TimestartUpLoad;
                 mydata = myUart->GPSParse();
                 std::cout << "satillites: " << mydata.satillitesCount << " ";
                 std::cout << "DataError: " << mydata.DataUnCorrect << " ";
@@ -131,9 +137,9 @@ int main(int argc, char *argv[])
                           << "HDOP " << std::setprecision(4) << mydata.HDOP << " "
                           << "Quailty: " << mydata.GPSQuality << " "
                           << "GeoidalSP: " << mydata.GPSGeoidalSP << "\n";
-                long int timees = micros();
+                long int timees = GetTimestamp() - TimestartUpLoad;
                 std::cout << "last frame time : " << timees - time << "\n";
-                timee = micros();
+                timee = GetTimestamp() - TimestartUpLoad;
                 if ((timee - time) > 200000)
                     usleep(1500);
                 else
@@ -145,9 +151,8 @@ int main(int argc, char *argv[])
         case 'C':
         {
 
-            std::signal(SIGINT, [](int signal) {
-                signalIn = signal;
-            });
+            std::signal(SIGINT, [](int signal)
+                        { signalIn = signal; });
             int rawx = 0;
             int rawy = 0;
             int rawz = 0;
@@ -158,13 +163,13 @@ int main(int argc, char *argv[])
             calibration[1] = 5000;
             calibration[3] = 5000;
             calibration[5] = 5000;
-            GPSI2CCompass mycompassTest("/dev/i2c-1", 0x0d, COMPASS_QMC5883L);
+            GPSI2CCompass mycompassTest(optarg, 0x0d, COMPASS_QMC5883L);
             for (size_t i = 0; i < 2000; i++)
             {
                 mycompassTest.CompassGetRaw(rawx, rawy, rawz);
                 std::cout << rawx << " " << rawy << " " << rawz << " " << sqrt(rawx * rawx + rawy * rawy + rawz * rawz) << "\n";
             }
-
+            mycompassTest.CompassCaliInit();
             while (true)
             {
                 mycompassTest.CompassGetRaw(rawx, rawy, rawz);
@@ -190,8 +195,8 @@ int main(int argc, char *argv[])
             int rawy = 0;
             int rawz = 0;
             double angleUnfix = 0;
-            GPSI2CCompass mycompassTest("/dev/i2c-1", 0x0d, COMPASS_QMC5883L);
-            mycompassTest.CompassApply(3104, 2965, 2338, 2080, 1288, 972);
+            GPSI2CCompass mycompassTest(optarg, 0x0d, COMPASS_QMC5883L);
+            mycompassTest.CompassApply(3292, 252, 2582, -400, 3338, 375);
             while (true)
             {
                 mycompassTest.CompassGetRaw(rawx, rawy, rawz);
@@ -221,9 +226,9 @@ int main(int argc, char *argv[])
                 std::cout << "alt:" << alt << " \n";
                 std::cout << "FLowq:" << qulity << " \n";
                 std::cout << "Status:" << Status << " \n";
-                timee = micros();
+                timee = GetTimestamp() - TimestartUpLoad;
                 std::cout << "last frame time : " << timee - time << "\n";
-                time = micros();
+                time = GetTimestamp() - TimestartUpLoad;
                 if ((timee - time) > 35000)
                     usleep(50);
                 else
