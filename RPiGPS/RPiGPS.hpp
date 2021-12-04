@@ -43,6 +43,8 @@
 #define GGAData_Altitude 9
 #define GGAData_GeoidalSP 11
 
+#define DEG2RAD(x) (x * PI / 180.f)
+
 struct GPSUartData
 {
     double lat = 0;
@@ -357,6 +359,10 @@ private:
     }
 };
 
+#define COMPASS_FLIP_X 0
+#define COMPASS_FLIP_Y 1
+#define COMPASS_FLIP_Z 2
+
 #define QMC5883_REG_HRESET 0x0b
 #define QMC5883_REG_RESET 0x0a
 #define QMC5883_REG_MODE 0x09
@@ -370,7 +376,7 @@ private:
 class GPSI2CCompass
 {
 public:
-    GPSI2CCompass(const char *i2cDevice, uint8_t i2caddr, int Compass_Type)
+    GPSI2CCompass(const char *i2cDevice, uint8_t i2caddr, int Compass_Type, int FlipConfig[3])
     {
         CompassFD = open(i2cDevice, O_RDWR);
         if (ioctl(CompassFD, I2C_SLAVE, i2caddr) < 0)
@@ -408,6 +414,10 @@ public:
         CompassCalibrationData[7] = 1;
         CompassCalibrationData[8] = 1;
         CompassCalibrationData[9] = 1;
+
+        flipConfig[0] = FlipConfig[0];
+        flipConfig[1] = FlipConfig[1];
+        flipConfig[2] = FlipConfig[2];
     };
 
     void CompassCaliInit()
@@ -528,13 +538,25 @@ private:
         error = read(CompassFD, cdata, 6);
         if (error == 6)
         {
-            RawMAGX = (short)(cdata[1] << 8 | cdata[0]);
-            RawMAGY = (short)(cdata[3] << 8 | cdata[2]);
-            RawMAGZ = (short)(cdata[5] << 8 | cdata[4]);
+            int Tmp_MX = (short)(cdata[1] << 8 | cdata[0]);
+            int Tmp_MY = (short)(cdata[3] << 8 | cdata[2]);
+            int Tmp_MZ = (short)(cdata[5] << 8 | cdata[4]);
+
+            int Tmp_M2X = Tmp_MX * cos(DEG2RAD((flipConfig[2]))) + Tmp_MY * sin(DEG2RAD((flipConfig[2])));
+            int Tmp_M2Y = Tmp_MY * cos(DEG2RAD((flipConfig[2]))) + Tmp_MX * sin(DEG2RAD((180 + flipConfig[2])));
+            // Step 2: rotate Pitch
+            int Tmp_M3X = Tmp_M2X * cos(DEG2RAD(flipConfig[0])) + Tmp_MZ * sin(DEG2RAD((flipConfig[0])));
+            int Tmp_M3Z = Tmp_MZ * cos(DEG2RAD((flipConfig[0]))) + Tmp_M2X * sin(DEG2RAD((180 + flipConfig[0])));
+            // Step 3: rotate Roll
+            RawMAGY = Tmp_M2Y * cos(DEG2RAD((flipConfig[1]))) + Tmp_M3Z * sin(DEG2RAD((180 + flipConfig[1])));
+            RawMAGZ = Tmp_M3Z * cos(DEG2RAD((flipConfig[1]))) + Tmp_M2Y * sin(DEG2RAD((flipConfig[1])));
+            RawMAGX = Tmp_M3X;
         }
 
         return error;
     }
+
+    int flipConfig[3];
 
     int RawMAGIX = 0;
     int RawMAGIY = 0;

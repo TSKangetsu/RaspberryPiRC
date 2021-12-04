@@ -163,7 +163,8 @@ int main(int argc, char *argv[])
             calibration[1] = 5000;
             calibration[3] = 5000;
             calibration[5] = 5000;
-            GPSI2CCompass mycompassTest(optarg, 0x0d, COMPASS_QMC5883L);
+            int flip[3] = {90, 0, 0};
+            GPSI2CCompass mycompassTest(optarg, 0x0d, COMPASS_QMC5883L, flip);
             for (size_t i = 0; i < 2000; i++)
             {
                 mycompassTest.CompassGetRaw(rawx, rawy, rawz);
@@ -195,8 +196,9 @@ int main(int argc, char *argv[])
             int rawy = 0;
             int rawz = 0;
             double angleUnfix = 0;
-            GPSI2CCompass mycompassTest(optarg, 0x0d, COMPASS_QMC5883L);
-            mycompassTest.CompassApply(3292, 252, 2582, -400, 3338, 375);
+            int flip[3] = {90, 0, 0};
+            GPSI2CCompass mycompassTest(optarg, 0x0d, COMPASS_QMC5883L, flip);
+            mycompassTest.CompassApply(3225, 296, 2734, -246, -254, -3229);
             while (true)
             {
                 mycompassTest.CompassGetRaw(rawx, rawy, rawz);
