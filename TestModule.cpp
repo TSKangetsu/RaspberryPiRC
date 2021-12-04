@@ -163,20 +163,19 @@ int main(int argc, char *argv[])
             calibration[1] = 5000;
             calibration[3] = 5000;
             calibration[5] = 5000;
-            int flip[3] = {90, 0, 0};
+            int flip[3] = {0, 0, 0};
             GPSI2CCompass mycompassTest(optarg, 0x0d, COMPASS_QMC5883L, flip);
-            for (size_t i = 0; i < 2000; i++)
-            {
-                mycompassTest.CompassGetRaw(rawx, rawy, rawz);
-                std::cout << rawx << " " << rawy << " " << rawz << " " << sqrt(rawx * rawx + rawy * rawy + rawz * rawz) << "\n";
-            }
             mycompassTest.CompassCaliInit();
+
             while (true)
             {
                 mycompassTest.CompassGetRaw(rawx, rawy, rawz);
-                std::cout << rawx << " " << rawy << " " << rawz << " " << sqrt(rawx * rawx + rawy * rawy + rawz * rawz) << "\n";
+                std::cout << "X:" << std::setw(7) << std::setfill(' ') << rawx << " "
+                          << "Y:" << std::setw(7) << std::setfill(' ') << rawy << " "
+                          << "Z:" << std::setw(7) << std::setfill(' ') << rawz << " "
+                          << "V:" << std::setw(7) << std::setfill(' ') << (int)sqrt(rawx * rawx + rawy * rawy + rawz * rawz) << " \n";
                 mycompassTest.CompassCalibration(true, calibration);
-                usleep(((float)1 / 200 * 1000000));
+                usleep(50 * 1000);
                 if (signalIn == SIGINT)
                     break;
             }
@@ -196,16 +195,18 @@ int main(int argc, char *argv[])
             int rawy = 0;
             int rawz = 0;
             double angleUnfix = 0;
-            int flip[3] = {90, 0, 0};
+            int flip[3] = {0, 0, 0};
             GPSI2CCompass mycompassTest(optarg, 0x0d, COMPASS_QMC5883L, flip);
-            mycompassTest.CompassApply(3225, 296, 2734, -246, -254, -3229);
+            mycompassTest.CompassApply(3281, 343, 2713, -364, 3227, 282);
             while (true)
             {
                 mycompassTest.CompassGetRaw(rawx, rawy, rawz);
                 mycompassTest.CompassGetUnfixAngle(angleUnfix);
-                std::cout << angleUnfix << "\n";
-                std::cout << rawx << " " << rawy << " " << rawz << "\n";
-                usleep(((float)1 / 200 * 1000000));
+                std::cout << "Angle: " << std::setw(7) << std::setfill(' ') << angleUnfix << "\n";
+                std::cout << "X:" << std::setw(7) << std::setfill(' ') << rawx << " "
+                          << "Y:" << std::setw(7) << std::setfill(' ') << rawy << " "
+                          << "Z:" << std::setw(7) << std::setfill(' ') << rawz << " \n";
+                usleep(50 * 1000);
             }
         }
         break;

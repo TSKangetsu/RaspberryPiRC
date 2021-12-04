@@ -532,25 +532,38 @@ public:
 private:
     int CompassRead(int &RawMAGX, int &RawMAGY, int &RawMAGZ)
     {
-        uint8_t cdata[6] = {0x00};
-        uint8_t wdata[1] = {QMC5883_REG_DATA};
-        int error = write(CompassFD, &wdata, 1);
-        error = read(CompassFD, cdata, 6);
-        if (error == 6)
-        {
-            int Tmp_MX = (short)(cdata[1] << 8 | cdata[0]);
-            int Tmp_MY = (short)(cdata[3] << 8 | cdata[2]);
-            int Tmp_MZ = (short)(cdata[5] << 8 | cdata[4]);
+        int error = -1;
+        uint8_t cadata[1] = {QMC5883_REG_STATUS};
+        uint8_t cxdata[1];
+        error = write(CompassFD, &cadata, 1);
+        error = read(CompassFD, cxdata, 1);
 
-            int Tmp_M2X = Tmp_MX * cos(DEG2RAD((flipConfig[2]))) + Tmp_MY * sin(DEG2RAD((flipConfig[2])));
-            int Tmp_M2Y = Tmp_MY * cos(DEG2RAD((flipConfig[2]))) + Tmp_MX * sin(DEG2RAD((180 + flipConfig[2])));
-            // Step 2: rotate Pitch
-            int Tmp_M3X = Tmp_M2X * cos(DEG2RAD(flipConfig[0])) + Tmp_MZ * sin(DEG2RAD((flipConfig[0])));
-            int Tmp_M3Z = Tmp_MZ * cos(DEG2RAD((flipConfig[0]))) + Tmp_M2X * sin(DEG2RAD((180 + flipConfig[0])));
-            // Step 3: rotate Roll
-            RawMAGY = Tmp_M2Y * cos(DEG2RAD((flipConfig[1]))) + Tmp_M3Z * sin(DEG2RAD((180 + flipConfig[1])));
-            RawMAGZ = Tmp_M3Z * cos(DEG2RAD((flipConfig[1]))) + Tmp_M2Y * sin(DEG2RAD((flipConfig[1])));
-            RawMAGX = Tmp_M3X;
+        if (((cxdata[0] & (1 << 0)) >> 0) == 1 && ((cxdata[0] & (1 << 1)) >> 1) == 0)
+        {
+            uint8_t cdata[6] = {0x00};
+            uint8_t wdata[1] = {QMC5883_REG_DATA};
+            error = write(CompassFD, &wdata, 1);
+            error = read(CompassFD, cdata, 6);
+            if (error == 6)
+            {
+                int Tmp_MX = (short)(cdata[1] << 8 | cdata[0]);
+                int Tmp_MY = (short)(cdata[3] << 8 | cdata[2]);
+                int Tmp_MZ = (short)(cdata[5] << 8 | cdata[4]);
+
+                int Tmp_M2X = Tmp_MX * cos(DEG2RAD((flipConfig[2]))) + Tmp_MY * sin(DEG2RAD((flipConfig[2])));
+                int Tmp_M2Y = Tmp_MY * cos(DEG2RAD((flipConfig[2]))) + Tmp_MX * sin(DEG2RAD((180 + flipConfig[2])));
+                // Step 2: rotate Pitch
+                int Tmp_M3X = Tmp_M2X * cos(DEG2RAD(flipConfig[0])) + Tmp_MZ * sin(DEG2RAD((flipConfig[0])));
+                int Tmp_M3Z = Tmp_MZ * cos(DEG2RAD((flipConfig[0]))) + Tmp_M2X * sin(DEG2RAD((180 + flipConfig[0])));
+                // Step 3: rotate Roll
+                RawMAGY = Tmp_M2Y * cos(DEG2RAD((flipConfig[1]))) + Tmp_M3Z * sin(DEG2RAD((180 + flipConfig[1])));
+                RawMAGZ = Tmp_M3Z * cos(DEG2RAD((flipConfig[1]))) + Tmp_M2Y * sin(DEG2RAD((flipConfig[1])));
+                RawMAGX = Tmp_M3X;
+            }
+        }
+        else
+        {
+            return -1;
         }
 
         return error;
