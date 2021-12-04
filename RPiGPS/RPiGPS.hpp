@@ -446,6 +446,13 @@ public:
 
     void CompassCalibration(bool Calibrating, int *CalibratedData)
     {
+        CompassCalibrationData[0] = 0;
+        CompassCalibrationData[1] = 0;
+        CompassCalibrationData[2] = 0;
+        CompassCalibrationData[7] = 1;
+        CompassCalibrationData[8] = 1;
+        CompassCalibrationData[9] = 1;
+
         if (Calibrating)
         {
             // X Y Z MAX MIN
