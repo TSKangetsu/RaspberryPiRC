@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <thread>
 #include <csignal>
+#include <sys/time.h>
 #include "RPiGPS/RPiGPS.hpp"
 #include "RPiSBus/RPiSBus.hpp"
 #include "RPiIBus/RPiIBus.hpp"
