@@ -369,6 +369,12 @@ private:
 #define QMC5883_REG_STATUS 0x06
 #define QMC5883_REG_DATA 0x00
 
+#define HMC5883_REG_CONFIGA 0x00
+#define HMC5883_REG_CONFIGB 0x01
+#define HMC5883_REG_MODE 0x02
+#define HMC5883_REG_DATA 0x03
+#define HMC5883_REG_STATUS 0x09
+//
 #define QMC5883_OP_HRESET 0x01
 #define QMC5883_OP_RESET 0x80
 #define QMC5883_OP_200HZ 0x1d
@@ -407,6 +413,23 @@ public:
         break;
         case COMPASS_HMC5883L:
         {
+            {
+                uint8_t wdata[2] = {HMC5883_REG_CONFIGA, 0x18};
+                if (write(CompassFD, &wdata, 2) < 0)
+                    throw - 2;
+            }
+
+            {
+                uint8_t wdata[2] = {HMC5883_REG_CONFIGB, 0xE0};
+                if (write(CompassFD, &wdata, 2) < 0)
+                    throw - 2;
+            }
+
+            {
+                uint8_t wdata[2] = {HMC5883_REG_MODE, 0x00};
+                if (write(CompassFD, &wdata, 2) < 0)
+                    throw - 2;
+            }
         }
         break;
         }
@@ -497,7 +520,7 @@ public:
 
     void CompassGetUnfixAngle(double &UnFixAngle)
     {
-        UnFixAngle = atan2((float)-1 * RawMAGCX, (float)-1 * RawMAGCY) * 180.f / PI;
+        UnFixAngle = atan2((float)RawMAGCY, (float)-1 * RawMAGCX) * 180.f / PI;
         if (UnFixAngle < 0)
             UnFixAngle += 360.f;
         else if (UnFixAngle >= 360)
@@ -542,41 +565,87 @@ public:
 private:
     int CompassRead(int &RawMAGX, int &RawMAGY, int &RawMAGZ)
     {
-        int error = -1;
-        uint8_t cadata[1] = {QMC5883_REG_STATUS};
-        uint8_t cxdata[1];
-        error = write(CompassFD, &cadata, 1);
-        error = read(CompassFD, cxdata, 1);
-
-        if (((cxdata[0] & (1 << 0)) >> 0) == 1 && ((cxdata[0] & (1 << 1)) >> 1) == 0)
+        switch (CompassType)
         {
-            uint8_t cdata[6] = {0x00};
-            uint8_t wdata[1] = {QMC5883_REG_DATA};
-            error = write(CompassFD, &wdata, 1);
-            error = read(CompassFD, cdata, 6);
-            if (error == 6)
+        case COMPASS_QMC5883L:
+        {
+            int error = -1;
+            uint8_t cadata[1] = {QMC5883_REG_STATUS};
+            uint8_t cxdata[1];
+            error = write(CompassFD, &cadata, 1);
+            error = read(CompassFD, cxdata, 1);
+
+            if (((cxdata[0] & (1 << 0)) >> 0) == 1 && ((cxdata[0] & (1 << 1)) >> 1) == 0)
             {
-                int Tmp_MX = (short)(cdata[1] << 8 | cdata[0]);
-                int Tmp_MY = (short)(cdata[3] << 8 | cdata[2]);
-                int Tmp_MZ = (short)(cdata[5] << 8 | cdata[4]);
+                uint8_t cdata[6] = {0x00};
+                uint8_t wdata[1] = {QMC5883_REG_DATA};
+                error = write(CompassFD, &wdata, 1);
+                error = read(CompassFD, cdata, 6);
+                if (error == 6)
+                {
+                    int Tmp_MX = (short)(cdata[1] << 8 | cdata[0]);
+                    int Tmp_MY = (short)(cdata[3] << 8 | cdata[2]);
+                    int Tmp_MZ = (short)(cdata[5] << 8 | cdata[4]);
 
-                int Tmp_M2X = Tmp_MX * cos(DEG2RAD((flipConfig[2]))) + Tmp_MY * sin(DEG2RAD((flipConfig[2])));
-                int Tmp_M2Y = Tmp_MY * cos(DEG2RAD((flipConfig[2]))) + Tmp_MX * sin(DEG2RAD((180 + flipConfig[2])));
-                // Step 2: rotate Pitch
-                int Tmp_M3X = Tmp_M2X * cos(DEG2RAD(flipConfig[0])) + Tmp_MZ * sin(DEG2RAD((flipConfig[0])));
-                int Tmp_M3Z = Tmp_MZ * cos(DEG2RAD((flipConfig[0]))) + Tmp_M2X * sin(DEG2RAD((180 + flipConfig[0])));
-                // Step 3: rotate Roll
-                RawMAGY = Tmp_M2Y * cos(DEG2RAD((flipConfig[1]))) + Tmp_M3Z * sin(DEG2RAD((180 + flipConfig[1])));
-                RawMAGZ = Tmp_M3Z * cos(DEG2RAD((flipConfig[1]))) + Tmp_M2Y * sin(DEG2RAD((flipConfig[1])));
-                RawMAGX = Tmp_M3X;
+                    int Tmp_M2X = Tmp_MX * cos(DEG2RAD((flipConfig[2]))) + Tmp_MY * sin(DEG2RAD((flipConfig[2])));
+                    int Tmp_M2Y = Tmp_MY * cos(DEG2RAD((flipConfig[2]))) + Tmp_MX * sin(DEG2RAD((180 + flipConfig[2])));
+                    // Step 2: rotate Pitch
+                    int Tmp_M3X = Tmp_M2X * cos(DEG2RAD(flipConfig[0])) + Tmp_MZ * sin(DEG2RAD((flipConfig[0])));
+                    int Tmp_M3Z = Tmp_MZ * cos(DEG2RAD((flipConfig[0]))) + Tmp_M2X * sin(DEG2RAD((180 + flipConfig[0])));
+                    // Step 3: rotate Roll
+                    RawMAGY = Tmp_M2Y * cos(DEG2RAD((flipConfig[1]))) + Tmp_M3Z * sin(DEG2RAD((180 + flipConfig[1])));
+                    RawMAGZ = Tmp_M3Z * cos(DEG2RAD((flipConfig[1]))) + Tmp_M2Y * sin(DEG2RAD((flipConfig[1])));
+                    RawMAGX = Tmp_M3X;
+                }
             }
-        }
-        else
-        {
-            return -1;
-        }
+            else
+            {
+                return -1;
+            }
 
-        return error;
+            return error;
+        }
+        break;
+
+        case COMPASS_HMC5883L:
+        {
+            int error = -1;
+            uint8_t cadata[1] = {HMC5883_REG_STATUS};
+            uint8_t cxdata[1] = {0x00};
+            error = write(CompassFD, &cadata, 1);
+            error = read(CompassFD, cxdata, 1);
+            if (((cxdata[0] & (1 << 0)) >> 0) == 1)
+            {
+                uint8_t cdata[6] = {0x00};
+                uint8_t wdata[1] = {HMC5883_REG_DATA};
+                error = write(CompassFD, &wdata, 1);
+                error = read(CompassFD, cdata, 6);
+                if (error == 6)
+                {
+                    int Tmp_MX = (short)(cdata[1] << 8 | cdata[0]);
+                    int Tmp_MY = (short)(cdata[5] << 8 | cdata[4]);
+                    int Tmp_MZ = (short)(cdata[3] << 8 | cdata[2]);
+
+                    int Tmp_M2X = Tmp_MX * cos(DEG2RAD((flipConfig[2]))) + Tmp_MY * sin(DEG2RAD((flipConfig[2])));
+                    int Tmp_M2Y = Tmp_MY * cos(DEG2RAD((flipConfig[2]))) + Tmp_MX * sin(DEG2RAD((180 + flipConfig[2])));
+                    // Step 2: rotate Pitch
+                    int Tmp_M3X = Tmp_M2X * cos(DEG2RAD(flipConfig[0])) + Tmp_MZ * sin(DEG2RAD((flipConfig[0])));
+                    int Tmp_M3Z = Tmp_MZ * cos(DEG2RAD((flipConfig[0]))) + Tmp_M2X * sin(DEG2RAD((180 + flipConfig[0])));
+                    // Step 3: rotate Roll
+                    RawMAGY = Tmp_M2Y * cos(DEG2RAD((flipConfig[1]))) + Tmp_M3Z * sin(DEG2RAD((180 + flipConfig[1])));
+                    RawMAGZ = Tmp_M3Z * cos(DEG2RAD((flipConfig[1]))) + Tmp_M2Y * sin(DEG2RAD((flipConfig[1])));
+                    RawMAGX = Tmp_M3X;
+                }
+            }
+            else
+            {
+                return -1;
+            }
+
+            return error;
+        }
+        break;
+        }
     }
 
     int flipConfig[3];
