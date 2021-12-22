@@ -21,8 +21,6 @@
 #define PI 3.1415926
 #define QMC5883LADDR 0x0D
 #define HMC5883LADDR 0x1E
-#define COMPASS_QMC5883L 0
-#define COMPASS_HMC5883L 1
 
 #define CompassXOffset 0
 #define CompassXScaler 1
@@ -379,10 +377,16 @@ private:
 #define QMC5883_OP_RESET 0x80
 #define QMC5883_OP_200HZ 0x1d
 
+enum CompassType
+{
+    COMPASS_QMC5883L,
+    COMPASS_HMC5883L,
+};
+
 class GPSI2CCompass
 {
 public:
-    GPSI2CCompass(const char *i2cDevice, uint8_t i2caddr, int Compass_Type, int FlipConfig[3])
+    GPSI2CCompass(const char *i2cDevice, uint8_t i2caddr, CompassType Compass_Type, int FlipConfig[3])
     {
         CompassFD = open(i2cDevice, O_RDWR);
         if (ioctl(CompassFD, I2C_SLAVE, i2caddr) < 0)
@@ -585,7 +589,7 @@ private:
                 {
                     int Tmp_MX = (short)(cdata[1] << 8 | cdata[0]);
                     int Tmp_MY = (short)(cdata[3] << 8 | cdata[2]);
-                    int Tmp_MZ = (short)(cdata[5] << 8 | cdata[4]);
+                    int Tmp_MZ = (short)(cdata[5] << 8 | cdata[4]) * -1; // Revert as HMC5883L
 
                     int Tmp_M2X = Tmp_MX * cos(DEG2RAD((flipConfig[2]))) + Tmp_MY * sin(DEG2RAD((flipConfig[2])));
                     int Tmp_M2Y = Tmp_MY * cos(DEG2RAD((flipConfig[2]))) + Tmp_MX * sin(DEG2RAD((180 + flipConfig[2])));

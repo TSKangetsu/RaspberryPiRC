@@ -152,8 +152,7 @@ int main(int argc, char *argv[])
         case 'C':
         {
 
-            std::signal(SIGINT, [](int signal)
-                        { signalIn = signal; });
+            std::signal(SIGINT, [](int signal) { signalIn = signal; });
             int rawx = 0;
             int rawy = 0;
             int rawz = 0;
@@ -165,7 +164,7 @@ int main(int argc, char *argv[])
             calibration[3] = 5000;
             calibration[5] = 5000;
             int flip[3] = {0, 0, 0};
-            GPSI2CCompass mycompassTest(optarg, 0x1e, COMPASS_HMC5883L, flip);
+            GPSI2CCompass mycompassTest(optarg, 0x0d, COMPASS_QMC5883L, flip);
             mycompassTest.CompassCaliInit();
 
             while (true)
@@ -197,8 +196,8 @@ int main(int argc, char *argv[])
             int rawz = 0;
             double angleUnfix = 0;
             int flip[3] = {0, 0, 0};
-            GPSI2CCompass mycompassTest(optarg, 0x1e, COMPASS_HMC5883L, flip);
-            mycompassTest.CompassApply(3281, 343, 2713, -364, 3227, 282);
+            GPSI2CCompass mycompassTest(optarg, 0x0d, COMPASS_QMC5883L, flip);
+            mycompassTest.CompassApply(1537, 1106, 2597, 2268, 1488, 1090);
             while (true)
             {
                 mycompassTest.CompassGetRaw(rawx, rawy, rawz);
