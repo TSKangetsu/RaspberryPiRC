@@ -152,7 +152,8 @@ int main(int argc, char *argv[])
         case 'C':
         {
 
-            std::signal(SIGINT, [](int signal) { signalIn = signal; });
+            std::signal(SIGINT, [](int signal)
+                        { signalIn = signal; });
             int rawx = 0;
             int rawy = 0;
             int rawz = 0;
@@ -223,6 +224,7 @@ int main(int argc, char *argv[])
             MSPUartFlow myUart(optarg);
             while (true)
             {
+                std::cout << "\n";
                 int Status = myUart.MSPDataRead(x, y, alt, qulity);
                 std::cout << "x:" << x << " \n";
                 std::cout << "y:" << y << " \n";

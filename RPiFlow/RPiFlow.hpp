@@ -1,7 +1,9 @@
 #pragma once
 #ifdef DEBUG
 #include <iostream>
+#include <iomanip>
 #endif
+#include <vector>
 #include <fcntl.h>
 #include <string>
 #include <sstream>
@@ -15,6 +17,8 @@
 #include <asm/termbits.h>
 #undef termios
 #include <termios.h>
+
+#define CRC_START_8 0x00
 
 class MSPUartFlow
 {
@@ -65,26 +69,59 @@ public:
         {
             for (size_t i = 0; i < InputFrame; i++)
             {
-                if (TmpData[i] == '$')
+                if (TmpData[i] == '$' && InputFrame - i > 8)
                 {
-                    char Header[8];
-                    for (size_t s = 0; s < 8; s++)
+                    // step 1: get length of data
+                    int len = (short)((int)TmpData[i + 7] << 8 | (int)TmpData[i + 6]);
+                    if (InputFrame - i > (6 + 2 + len))
                     {
-                        Header[s] = TmpData[i + s];
-                    }
-                    if (Header[4] == 1)
-                    {
-                        int len = (short)((int)Header[7] << 8 | (int)Header[6]);
-                        Altitude = (short)((int)TmpData[i + 8 + 2] << 8 | (int)TmpData[i + 8 + 1]);
-                        IsAltitudeFound = true;
-                    }
-                    else if (Header[4] == 2)
-                    {
-                        int len = (short)((int)Header[7] << 8 | (int)Header[6]);
-                        DataQuality = TmpData[i + 8];
-                        YOutput = (short)((int)TmpData[i + 8 + 2] << 8 | (int)TmpData[i + 8 + 1]);
-                        XOutput = (short)((int)TmpData[i + 8 + 6] << 8 | (int)TmpData[i + 8 + 5]);
-                        IsMovingFound = true;
+                        // step 2: copy dat
+                        recvDataBuffer.clear();
+                        // step 3: copy header
+                        for (size_t s = 0; s < 5; s++)
+                        {
+                            recvDataBuffer.push_back(TmpData[i + 3 + s]);
+                        }
+                        // step 4: copy data
+                        for (size_t s = 0; s < len; s++)
+                        {
+                            recvDataBuffer.push_back(TmpData[i + 3 + 5 + s]);
+                        }
+                        // step 5: get crc from master
+                        uint8_t crcFromMaster = TmpData[i + 3 + 5 + len];
+                        // step 6: caculate data CRC to compare
+                        uint8_t crc8DataParse = gencrc(recvDataBuffer.data(), recvDataBuffer.size());
+#ifdef DEBUG
+                        std::cout << "len: " << len << "\n";
+                        for (size_t s = 0; s < recvDataBuffer.size(); s++)
+                        {
+                            std::cout << std::setw(2) << std::setfill('0') << std::hex << (int)recvDataBuffer[s] << std::dec << " ";
+                        }
+                        std::cout << "\ngot crc: " << std::hex << (int)crcFromMaster << std::dec << '\n';
+                        std::cout << "CRC from Data: " << std::hex << (int)crc8DataParse << std::dec << "\n-\n";
+#endif
+                        // step 7: check crc is correct, if correct, parsing to data out
+                        if (crc8DataParse == crcFromMaster)
+                        {
+                            if (recvDataBuffer[1] == 1)
+                            {
+                                Altitude = (short)((int)recvDataBuffer[5 + 2] << 8 | (int)recvDataBuffer[5 + 1]);
+                                IsAltitudeFound = true;
+                            }
+                            if (recvDataBuffer[1] == 2)
+                            {
+                                DataQuality = recvDataBuffer[5];
+                                YOutput = (short)((int)recvDataBuffer[5 + 2] << 8 | (int)recvDataBuffer[5 + 1]);
+                                XOutput = (short)((int)recvDataBuffer[5 + 6] << 8 | (int)recvDataBuffer[5 + 5]);
+                                IsMovingFound = true;
+                            }
+                        }
+                        else
+                        {
+#ifdef DEBUG
+                            std::cout << "data CRC mismatch!";
+#endif
+                        }
                     }
                 }
             }
@@ -113,4 +150,23 @@ private:
     fd_set fd_Maker;
     int MSPUart_fd;
     std::string FlowDevice;
+    std::vector<uint8_t> recvDataBuffer;
+
+    uint8_t gencrc(uint8_t *data, size_t len)
+    {
+        uint8_t crc = 0x00;
+        size_t i, j;
+        for (i = 0; i < len; i++)
+        {
+            crc ^= data[i];
+            for (j = 0; j < 8; j++)
+            {
+                if ((crc & 0x80) != 0)
+                    crc = (uint8_t)((crc << 1) ^ 0xd5);
+                else
+                    crc <<= 1;
+            }
+        }
+        return crc;
+    }
 };
