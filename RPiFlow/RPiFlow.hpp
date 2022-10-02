@@ -69,11 +69,11 @@ public:
         {
             for (size_t i = 0; i < InputFrame; i++)
             {
-                if (TmpData[i] == '$' && InputFrame - i > 8)
+                if (TmpData[i] == '$')
                 {
                     // step 1: get length of data
-                    int len = (short)((int)TmpData[i + 7] << 8 | (int)TmpData[i + 6]);
-                    if (InputFrame - i > (6 + 2 + len))
+                    unsigned int len = (short)((int)TmpData[i + 7] << 8 | (int)TmpData[i + 6]);
+                    if (i + len < InputFrame)
                     {
                         // step 2: copy dat
                         recvDataBuffer.clear();
@@ -92,7 +92,8 @@ public:
                         // step 6: caculate data CRC to compare
                         uint8_t crc8DataParse = gencrc(recvDataBuffer.data(), recvDataBuffer.size());
 #ifdef DEBUG
-                        std::cout << "len: " << len << "\n";
+                        std::cout << "framelen: " << InputFrame << "\n";
+                        std::cout << "datalen: " << len << "\n";
                         for (size_t s = 0; s < recvDataBuffer.size(); s++)
                         {
                             std::cout << std::setw(2) << std::setfill('0') << std::hex << (int)recvDataBuffer[s] << std::dec << " ";
