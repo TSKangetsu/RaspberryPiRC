@@ -9,6 +9,7 @@
 #include "RPiSBus/RPiSBus.hpp"
 #include "RPiIBus/RPiIBus.hpp"
 #include "RPiFlow/RPiFlow.hpp"
+#include "CRSF/CRSFCRSFUartRC.hpp"
 
 int signalIn = 0;
 int TimestartUpLoad = 0;
@@ -24,7 +25,7 @@ int main(int argc, char *argv[])
 {
     int argvs;
     TimestartUpLoad = GetTimestamp();
-    while ((argvs = getopt(argc, argv, "vhi:s:g:G:c:C:f:")) != -1)
+    while ((argvs = getopt(argc, argv, "vhi:s:g:G:c:C:f:R")) != -1)
     {
         switch (argvs)
         {
@@ -239,6 +240,14 @@ int main(int argc, char *argv[])
                 else
                     usleep(35000 - (timee - time));
             }
+        }
+        break;
+
+        case 'R':
+        {
+            CRSFCRSFUartRC test("/dev/ttyUSB0");
+            int channelData[50];
+            test.CRFSRead(channelData, -1, -1);
         }
         break;
         }
