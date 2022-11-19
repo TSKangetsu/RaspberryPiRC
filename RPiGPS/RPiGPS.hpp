@@ -7,6 +7,7 @@
 #include <sstream>
 #include <unistd.h>
 #include <sys/ioctl.h>
+#include <asm/ioctls.h>
 #include <sys/types.h>
 #include <stdint.h>
 #include <string.h>
@@ -390,9 +391,9 @@ public:
     {
         CompassFD = open(i2cDevice, O_RDWR);
         if (ioctl(CompassFD, I2C_SLAVE, i2caddr) < 0)
-            throw - 1;
+            throw -1;
         if (ioctl(CompassFD, I2C_TIMEOUT, 0x01) < 0) // set to 10ms?
-            throw - 1;
+            throw -1;
 
         CompassType = Compass_Type;
         //
@@ -403,14 +404,14 @@ public:
             {
                 uint8_t wdata[2] = {QMC5883_REG_RESET, QMC5883_OP_RESET};
                 if (write(CompassFD, &wdata, 2) < 0)
-                    throw - 2;
+                    throw -2;
             }
             //
             usleep(1000);
             {
                 uint8_t wdata[2] = {QMC5883_REG_MODE, QMC5883_OP_200HZ};
                 if (write(CompassFD, &wdata, 2) < 0)
-                    throw - 2;
+                    throw -2;
             }
             usleep(5000);
         }
@@ -420,19 +421,19 @@ public:
             {
                 uint8_t wdata[2] = {HMC5883_REG_CONFIGA, 0x18};
                 if (write(CompassFD, &wdata, 2) < 0)
-                    throw - 2;
+                    throw -2;
             }
 
             {
                 uint8_t wdata[2] = {HMC5883_REG_CONFIGB, 0xE0};
                 if (write(CompassFD, &wdata, 2) < 0)
-                    throw - 2;
+                    throw -2;
             }
 
             {
                 uint8_t wdata[2] = {HMC5883_REG_MODE, 0x00};
                 if (write(CompassFD, &wdata, 2) < 0)
-                    throw - 2;
+                    throw -2;
             }
         }
         break;
@@ -455,21 +456,21 @@ public:
         {
             uint8_t wdata[2] = {QMC5883_REG_HRESET, QMC5883_OP_HRESET};
             if (write(CompassFD, &wdata, 2) < 0)
-                throw - 2;
+                throw -2;
         }
         usleep(1000);
         //
         {
             uint8_t wdata[2] = {QMC5883_REG_RESET, QMC5883_OP_RESET};
             if (write(CompassFD, &wdata, 2) < 0)
-                throw - 2;
+                throw -2;
         }
         //
         usleep(1000);
         {
             uint8_t wdata[2] = {QMC5883_REG_MODE, QMC5883_OP_200HZ};
             if (write(CompassFD, &wdata, 2) < 0)
-                throw - 2;
+                throw -2;
         }
         usleep(5000);
     }

@@ -6,6 +6,7 @@
 #include <string>
 #include <unistd.h>
 #include <sys/ioctl.h>
+#include <asm/ioctls.h>
 #include <sys/types.h>
 #include <stdint.h>
 #define termios asmtermios
@@ -46,7 +47,7 @@ public:
         }
     }
     /*int waitTime support > 2000 , microSeconds
-	  @lose_HoldTime at lease 1 , if you set to zero , will loop forever untill sbus data comfirmly ready*/
+      @lose_HoldTime at lease 1 , if you set to zero , will loop forever untill sbus data comfirmly ready*/
     inline int IbusRead(int *channelsData, int waitTime, int lose_HoldTime)
     {
         if (Ibus_fd == -1)

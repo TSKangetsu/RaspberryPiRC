@@ -6,6 +6,7 @@
 #include <string>
 #include <unistd.h>
 #include <sys/ioctl.h>
+#include <asm/ioctls.h>
 #include <sys/types.h>
 #include <stdint.h>
 #define termios asmtermios
