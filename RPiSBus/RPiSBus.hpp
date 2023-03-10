@@ -8,6 +8,8 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <stdint.h>
+#include <stdexcept>
+// #include
 #define termios asmtermios
 #include <asm/termbits.h>
 #undef termios
@@ -18,22 +20,12 @@ public:
     inline Sbus(const char *UartDevice)
     {
         Sbus_fd = open(UartDevice, O_RDWR | O_NONBLOCK | O_CLOEXEC);
+
+        // TODO: better expection expected
         if (Sbus_fd == -1)
-        {
-#ifdef DEBUG
-            std::cout << "SbusDeviceError\n";
-#endif
-            throw std::string("SbusDeviceError");
-        }
+            throw std::invalid_argument("[UART] Unable to open device:" + std::string(UartDevice));
 
         struct termios2 options;
-
-        if (0 != ioctl(Sbus_fd, TCGETS2, &options))
-        {
-            close(Sbus_fd);
-            Sbus_fd = -1;
-        }
-
         options.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL | IXON);
         options.c_iflag |= (INPCK | IGNPAR);
         options.c_oflag &= ~OPOST;
@@ -49,6 +41,7 @@ public:
         {
             close(Sbus_fd);
             Sbus_fd = -1;
+            throw std::invalid_argument("[UART] set option failed");
         }
     }
 

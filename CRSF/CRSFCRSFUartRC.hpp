@@ -24,12 +24,7 @@ public:
     {
         CRSFUart_fd = open(UartDevice, O_RDWR | O_NONBLOCK | O_CLOEXEC);
         if (CRSFUart_fd == -1)
-        {
-#ifdef DEBUG
-            std::cout << "SbusDeviceError\n";
-#endif
-            throw std::string("SbusDeviceError");
-        }
+            throw std::invalid_argument("[UART] CRSF Unable to open device:" + std::string(UartDevice));
 
         struct termios2 options;
 
@@ -48,6 +43,7 @@ public:
         {
             close(CRSFUart_fd);
             CRSFUart_fd = -1;
+            throw std::invalid_argument("[UART] CRSF init failed");
         }
     };
 

@@ -14,6 +14,7 @@
 #include <linux/i2c-dev.h>
 #include <iostream>
 #include <math.h>
+#include <stdexcept>
 #define termios asmtermios
 #include <asm/termbits.h>
 #undef termios
@@ -68,13 +69,10 @@ public:
     {
         GPSDevice = UartDevice;
         GPSUart_fd = open(UartDevice, O_RDWR | O_NOCTTY | O_NDELAY);
+
+        // TODO: better expection expected
         if (GPSUart_fd == -1)
-        {
-#ifdef DEBUG
-            std::cout << "GPSDeviceError\n";
-#endif
-            throw std::string("GPSDeviceError");
-        }
+            throw std::invalid_argument("[UART] GPS Unable to open device:" + std::string(UartDevice));
 
         struct termios2 options;
 
@@ -94,34 +92,19 @@ public:
         }
 
         if (write(GPSUart_fd, GPSDisableGPGSVConfig, sizeof(GPSDisableGPGSVConfig)) == -1)
-        {
-#ifdef DEBUG
-            std::cout << "GPSWriteConfigError\n";
-#endif
-            throw std::string("GPSWriteConfigError");
-        }
+            throw std::invalid_argument("[UART] GPSWriteConfigError");
         else
         {
             tcdrain(GPSUart_fd);
             tcflush(GPSUart_fd, TCOFLUSH);
             if (write(GPSUart_fd, GPS5HzConfig, sizeof(GPS5HzConfig)) == -1)
-            {
-#ifdef DEBUG
-                std::cout << "GPSWriteConfig5HZError\n";
-#endif
-                throw std::string("GPSWriteConfig5HZError");
-            }
+                throw std::invalid_argument("[UART] GPSWriteConfig5HZError");
             else
             {
                 tcdrain(GPSUart_fd);
                 tcflush(GPSUart_fd, TCOFLUSH);
                 if (write(GPSUart_fd, Set_to_115kbps, sizeof(Set_to_115kbps)) == -1)
-                {
-#ifdef DEBUG
-                    std::cout << "GPSWriteConfig115Error\n";
-#endif
-                    throw std::string("GPSWriteConfig115Error");
-                }
+                    throw std::invalid_argument("[UART] GPSWriteConfig115Error");
                 else
                 {
                     tcdrain(GPSUart_fd);
@@ -142,12 +125,7 @@ public:
         }
         GPSUart_fd = open(GPSDevice.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);
         if (GPSUart_fd == -1)
-        {
-#ifdef DEBUG
-            std::cout << "GPS115DeviceError\n";
-#endif
-            throw std::string("GPS115DeviceError");
-        }
+            std::invalid_argument("[UART] GPS115DeviceError");
         struct termios2 options_57;
 
         if (0 != ioctl(GPSUart_fd, TCGETS2, &options_57))
@@ -390,9 +368,9 @@ public:
     {
         CompassFD = open(i2cDevice, O_RDWR);
         if (ioctl(CompassFD, I2C_SLAVE, i2caddr) < 0)
-            throw - 1;
+            std::invalid_argument("[I2C] COMPASS Unable to open device:" + std::string(i2cDevice));
         if (ioctl(CompassFD, I2C_TIMEOUT, 0x01) < 0) // set to 10ms?
-            throw - 1;
+            throw -1;
 
         CompassType = Compass_Type;
         //
@@ -403,14 +381,14 @@ public:
             {
                 uint8_t wdata[2] = {QMC5883_REG_RESET, QMC5883_OP_RESET};
                 if (write(CompassFD, &wdata, 2) < 0)
-                    throw - 2;
+                    throw std::invalid_argument("[I2C] init compass error");
             }
             //
             usleep(1000);
             {
                 uint8_t wdata[2] = {QMC5883_REG_MODE, QMC5883_OP_200HZ};
                 if (write(CompassFD, &wdata, 2) < 0)
-                    throw - 2;
+                    throw std::invalid_argument("[I2C] init compass error");
             }
             usleep(5000);
         }
@@ -420,19 +398,19 @@ public:
             {
                 uint8_t wdata[2] = {HMC5883_REG_CONFIGA, 0x18};
                 if (write(CompassFD, &wdata, 2) < 0)
-                    throw - 2;
+                    throw std::invalid_argument("[I2C] init compass error");
             }
 
             {
                 uint8_t wdata[2] = {HMC5883_REG_CONFIGB, 0xE0};
                 if (write(CompassFD, &wdata, 2) < 0)
-                    throw - 2;
+                    throw std::invalid_argument("[I2C] init compass error");
             }
 
             {
                 uint8_t wdata[2] = {HMC5883_REG_MODE, 0x00};
                 if (write(CompassFD, &wdata, 2) < 0)
-                    throw - 2;
+                    throw std::invalid_argument("[I2C] init compass error");
             }
         }
         break;
@@ -455,21 +433,21 @@ public:
         {
             uint8_t wdata[2] = {QMC5883_REG_HRESET, QMC5883_OP_HRESET};
             if (write(CompassFD, &wdata, 2) < 0)
-                throw - 2;
+                throw std::invalid_argument("[I2C] init compass error");
         }
         usleep(1000);
         //
         {
             uint8_t wdata[2] = {QMC5883_REG_RESET, QMC5883_OP_RESET};
             if (write(CompassFD, &wdata, 2) < 0)
-                throw - 2;
+                throw std::invalid_argument("[I2C] init compass error");
         }
         //
         usleep(1000);
         {
             uint8_t wdata[2] = {QMC5883_REG_MODE, QMC5883_OP_200HZ};
             if (write(CompassFD, &wdata, 2) < 0)
-                throw - 2;
+                throw std::invalid_argument("[I2C] init compass error");
         }
         usleep(5000);
     }

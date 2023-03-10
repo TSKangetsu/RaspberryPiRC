@@ -27,13 +27,10 @@ public:
     {
         FlowDevice = UartDevice;
         MSPUart_fd = open(UartDevice, O_RDWR | O_NONBLOCK | O_CLOEXEC);
+
+        // TODO: better expection expected
         if (MSPUart_fd == -1)
-        {
-#ifdef DEBUG
-            std::cout << "GPSDeviceError\n";
-#endif
-            throw std::string("GPSDeviceError");
-        }
+            throw std::invalid_argument("[UART] FLOW Unable to open device:" + std::string(UartDevice));
 
         struct termios2 options;
 
@@ -50,6 +47,7 @@ public:
         {
             close(MSPUart_fd);
             MSPUart_fd = -1;
+            throw std::invalid_argument("[UART] FLOW init failed");
         }
     };
 

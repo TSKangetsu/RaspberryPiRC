@@ -8,6 +8,7 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <stdint.h>
+#include <stdexcept>
 #define termios asmtermios
 #include <asm/termbits.h>
 #undef termios
@@ -20,21 +21,12 @@ public:
     inline Ibus(const char *UartDevice)
     {
         Ibus_fd = open(UartDevice, O_RDWR | O_NONBLOCK | O_CLOEXEC);
+
+        // TODO: better expection expected
         if (Ibus_fd == -1)
-        {
-#ifdef DEBUG
-            std::cout << "IbusDeviceError\n";
-#endif
-            throw std::string("IbusDeviceError");
-        }
+            throw std::invalid_argument("[UART] IBUS Unable to open device:" + std::string(UartDevice));
 
         struct termios2 options;
-
-        if (0 != ioctl(Ibus_fd, TCGETS2, &options))
-        {
-            close(Ibus_fd);
-            Ibus_fd = -1;
-        }
         options.c_cflag = B115200 | CS8 | CLOCAL | CREAD;
         options.c_iflag = IGNPAR;
         options.c_oflag = 0;
@@ -43,10 +35,11 @@ public:
         {
             close(Ibus_fd);
             Ibus_fd = -1;
+            throw std::invalid_argument("[UART] IBUS set option failed");
         }
     }
     /*int waitTime support > 2000 , microSeconds
-	  @lose_HoldTime at lease 1 , if you set to zero , will loop forever untill sbus data comfirmly ready*/
+      @lose_HoldTime at lease 1 , if you set to zero , will loop forever untill sbus data comfirmly ready*/
     inline int IbusRead(int *channelsData, int waitTime, int lose_HoldTime)
     {
         if (Ibus_fd == -1)
