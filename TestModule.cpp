@@ -9,7 +9,7 @@
 #include "RPiSBus/RPiSBus.hpp"
 #include "RPiIBus/RPiIBus.hpp"
 #include "RPiFlow/RPiFlow.hpp"
-#include "CRSF/CRSFCRSFUartRC.hpp"
+#include "CRSF/CRSFUartRC.hpp"
 
 int signalIn = 0;
 int TimestartUpLoad = 0;
@@ -245,9 +245,19 @@ int main(int argc, char *argv[])
 
         case 'R':
         {
-            CRSFCRSFUartRC test("/dev/ttyUSB0");
+            CRSFCRSFUartRC test("/dev/ttyS1");
             int channelData[50];
-            test.CRFSRead(channelData, -1, -1);
+
+            while (true)
+            {
+                test.CRSFRead(channelData, -1, -1);
+
+                for (size_t i = 0; i < 15; i++)
+                {
+                    std::cout << channelData[i] << " ";
+                }
+                std::cout << "\n";
+            }
         }
         break;
         }

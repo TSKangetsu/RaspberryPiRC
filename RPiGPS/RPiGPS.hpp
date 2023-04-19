@@ -7,6 +7,7 @@
 #include <sstream>
 #include <unistd.h>
 #include <sys/ioctl.h>
+#include <asm-generic/ioctls.h>
 #include <sys/types.h>
 #include <stdint.h>
 #include <string.h>
