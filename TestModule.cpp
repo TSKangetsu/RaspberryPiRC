@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
 {
     int argvs;
     TimestartUpLoad = GetTimestamp();
-    while ((argvs = getopt(argc, argv, "vhi:s:g:G:c:C:f:R")) != -1)
+    while ((argvs = getopt(argc, argv, "vhi:s:g:G:c:C:f:R:")) != -1)
     {
         switch (argvs)
         {
@@ -245,18 +245,32 @@ int main(int argc, char *argv[])
 
         case 'R':
         {
-            CRSFCRSFUartRC test("/dev/ttyS1");
+            long int time;
+            long int timee;
+            CRSFCRSFUartRC test(optarg);
             int channelData[50];
 
             while (true)
             {
-                test.CRSFRead(channelData, -1, -1);
-
-                for (size_t i = 0; i < 15; i++)
+                time = GetTimestamp() - TimestartUpLoad;
+                //
+                int retValue = test.CRSFRead(channelData, -1, -1);
+                if (retValue > 0)
                 {
-                    std::cout << channelData[i] << " ";
+                    for (size_t i = 0; i < 15; i++)
+                    {
+                        std::cout << test.rcToUs(channelData[i]) << " ";
+                    }
+                    std::cout << "\n";
                 }
-                std::cout << "\n";
+                else
+                {
+                    std::cout << " error frame recived"
+                              << "\n";
+                }
+                //
+                timee = GetTimestamp() - TimestartUpLoad;
+                std::cout << "last frame time : " << timee - time << "\n";
             }
         }
         break;

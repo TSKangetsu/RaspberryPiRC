@@ -37,10 +37,10 @@ public:
             CRSFUart_fd = -1;
         }
 
-        //
-        options.c_cflag = B460800 | CS8 | CLOCAL | CREAD;
-        options.c_oflag = 0;
-        options.c_lflag = 0;
+        options.c_cflag &= ~CBAUD;
+        options.c_cflag |= BOTHER;
+        options.c_ispeed = 420000;
+        options.c_ospeed = 420000;
 
         if (0 != ioctl(CRSFUart_fd, TCSETS2, &options))
         {
@@ -55,10 +55,6 @@ public:
         if (CRSFUart_fd == -1)
             return -1;
         //
-        // FD_ZERO(&fd_Maker);
-        // FD_SET(CRSFUart_fd, &fd_Maker);
-        // lose_frameCount = 0;
-        //
         InputBuffer = read(CRSFUart_fd, &dataBuffer, sizeof(dataBuffer));
         if (InputBuffer > 0)
         {
@@ -70,27 +66,33 @@ public:
             // }
             // std::cout << "\n";
         }
-    }
+        return InputBuffer;
+    };
 
     void CRSFParser(uint8_t *data, int size, int channelsOut[15])
     {
-        const crsf_header_t *hdr = (crsf_header_t *)data;
-        if (hdr->device_addr == CRSF_ADDRESS_FLIGHT_CONTROLLER)
+        const crsfProtocol::frame_t *hdr = (crsfProtocol::frame_t *)data;
+        if (hdr->frame.deviceAddress == crsfProtocol::CRSF_ADDRESS_FLIGHT_CONTROLLER)
         {
-            switch (hdr->type)
+            switch (hdr->frame.type)
             {
-            case CRSF_FRAMETYPE_GPS:
+            case crsfProtocol::CRSF_FRAMETYPE_GPS:
                 // packetGps(hdr);
                 break;
-            case CRSF_FRAMETYPE_RC_CHANNELS_PACKED:
+            case crsfProtocol::CRSF_FRAMETYPE_RC_CHANNELS_PACKED:
                 packetChannelsPacked(hdr, channelsOut);
                 break;
-            case CRSF_FRAMETYPE_LINK_STATISTICS:
+            case crsfProtocol::CRSF_FRAMETYPE_LINK_STATISTICS:
                 // packetLinkStatistics(hdr);
                 break;
             }
         } //
     }
+
+    inline uint16_t rcToUs(uint16_t rc)
+    {
+        return (uint16_t)((rc * 0.62477120195241F) + 881);
+    };
 
 private:
     fd_set fd_Maker;
@@ -102,35 +104,26 @@ private:
     int lose_frameCount;
     uint8_t dataBuffer[5000];
     //
-    typedef struct crsf_header_s
-    {
-        uint8_t device_addr;
-        uint8_t frame_size;
-        uint8_t type;
-        uint8_t data[0];
-    } crsf_header_t;
+    crsfProtocol::frame_t rcChannelsFrame;
     //
-    void packetChannelsPacked(const crsf_header_t *p, int _channels[15])
+    void packetChannelsPacked(const crsfProtocol::frame_t *p, int _channels[15])
     {
-        crsf_channels_t *ch = (crsf_channels_t *)&p->data;
-        _channels[0] = ch->ch0;
-        _channels[1] = ch->ch1;
-        _channels[2] = ch->ch2;
-        _channels[3] = ch->ch3;
-        _channels[4] = ch->ch4;
-        _channels[5] = ch->ch5;
-        _channels[6] = ch->ch6;
-        _channels[7] = ch->ch7;
-        _channels[8] = ch->ch8;
-        _channels[9] = ch->ch9;
-        _channels[10] = ch->ch10;
-        _channels[11] = ch->ch11;
-        _channels[12] = ch->ch12;
-        _channels[13] = ch->ch13;
-        _channels[14] = ch->ch14;
-        _channels[15] = ch->ch15;
-
-        // for (unsigned int i = 0; i < CRSF_NUM_CHANNELS; ++i)
-        // _channels[i] = std::map(_channels[i], CRSF_CHANNEL_VALUE_1000, CRSF_CHANNEL_VALUE_2000, 1000, 2000);
+        crsfProtocol::rcChannelsPacked_t *ch = (crsfProtocol::rcChannelsPacked_t *)&p->frame.payload;
+        _channels[0] = ch->channel0;
+        _channels[1] = ch->channel1;
+        _channels[2] = ch->channel2;
+        _channels[3] = ch->channel3;
+        _channels[4] = ch->channel4;
+        _channels[5] = ch->channel5;
+        _channels[6] = ch->channel6;
+        _channels[7] = ch->channel7;
+        _channels[8] = ch->channel8;
+        _channels[9] = ch->channel9;
+        _channels[10] = ch->channel10;
+        _channels[11] = ch->channel11;
+        _channels[12] = ch->channel12;
+        _channels[13] = ch->channel13;
+        _channels[14] = ch->channel14;
+        _channels[15] = ch->channel15;
     }
 };
