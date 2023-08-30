@@ -39,26 +39,7 @@ public:
             CRSFUart_fd = -1;
         }
 
-        // options.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL | IXON);
-        // options.c_iflag |= (INPCK | IGNPAR);
-        // options.c_oflag &= ~OPOST;
-        // options.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
-        // options.c_cflag &= ~(CSIZE | CRTSCTS | PARODD | CBAUD);
-        // options.c_cflag |= (CS8 | CSTOPB | CLOCAL | PARENB | BOTHER | CREAD);
-
-        // options.c_cflag |= BOTHER;
-        // options.c_cflag &= ~CBAUD;
-        // options.c_iflag = 0;
-        // options.c_oflag = 0;
-        // options.c_lflag = 0;
-        // options.c_ispeed = 420000;
-        // options.c_ospeed = 420000;
-
-        // options.c_cflag = B115200 | CS8 | CLOCAL | CREAD;
-        // options.c_iflag = IGNPAR;
-        // options.c_oflag = 0;
-        // options.c_lflag = 0;
-
+        options.c_cflag = B460800 | CS8 | CLOCAL | CREAD;
         options.c_cflag &= ~CBAUD;
         options.c_cflag |= BOTHER;
         options.c_ispeed = bandrate;
@@ -74,41 +55,62 @@ public:
 
     inline int CRSFRead(int *channelsData, int waitTime, int lose_HoldTime)
     {
+        int ret = -1;
         if (CRSFUart_fd == -1)
             return -1;
         //
         InputBuffer = read(CRSFUart_fd, &dataBuffer, sizeof(dataBuffer));
         if (InputBuffer > 0)
         {
-            CRSFParser(dataBuffer, InputBuffer, channelsData);
+            ret = CRSFParser(dataBuffer, InputBuffer, channelsData);
+            //
             // std::cout << "size:" << InputBuffer << "\n";
             // for (size_t i = 0; i < InputBuffer; i++)
             // {
-            //     std::cout << std::hex << (int)dataBuffer[i] << std::dec << " ";
+            //     std::cout << std::setw(2) << std::setfill('0')
+            //               << std::hex << (int)dataBuffer[i] << std::dec << " ";
             // }
             // std::cout << "\n";
+            //
         }
-        return InputBuffer;
+        return ret;
     };
 
-    void CRSFParser(uint8_t *data, int size, int channelsOut[15])
+    int CRSFParser(uint8_t *data, int size, int channelsOut[15])
     {
         const crsfProtocol::frame_t *hdr = (crsfProtocol::frame_t *)data;
         if (hdr->frame.deviceAddress == crsfProtocol::CRSF_ADDRESS_FLIGHT_CONTROLLER)
         {
-            switch (hdr->frame.type)
+            uint8_t crc = gencrc((uint8_t *)(hdr->frame.payload), hdr->frame.frameLength - 2, hdr->frame.type);
+            // std::cout << std::dec << "framesize: " << (int)hdr->frame.frameLength
+            //           << std::hex << " check crc: 0x" << (int)crc
+            //           << " == 0x" << (int)hdr->frame.payload[hdr->frame.frameLength - 2]
+            //           << std::dec << "\n";
+            // for (size_t i = 0; i < hdr->frame.frameLength; i++)
+            // {
+            //     std::cout << std::setw(2) << std::setfill('0')
+            //               << std::hex << (int)hdr->frame.payload[i] << std::dec << " ";
+            // }
+            // std::cout << '\n';
+
+            if (crc == hdr->frame.payload[hdr->frame.frameLength - 2])
             {
-            case crsfProtocol::CRSF_FRAMETYPE_GPS:
-                // packetGps(hdr);
-                break;
-            case crsfProtocol::CRSF_FRAMETYPE_RC_CHANNELS_PACKED:
-                packetChannelsPacked(hdr, channelsOut);
-                break;
-            case crsfProtocol::CRSF_FRAMETYPE_LINK_STATISTICS:
-                // packetLinkStatistics(hdr);
-                break;
+                switch (hdr->frame.type)
+                {
+                case crsfProtocol::CRSF_FRAMETYPE_GPS:
+                    // packetGps(hdr);
+                    return crsfProtocol::CRSF_FRAMETYPE_GPS;
+                case crsfProtocol::CRSF_FRAMETYPE_RC_CHANNELS_PACKED:
+                    packetChannelsPacked(hdr, channelsOut);
+                    return crsfProtocol::CRSF_FRAMETYPE_RC_CHANNELS_PACKED;
+                case crsfProtocol::CRSF_FRAMETYPE_LINK_STATISTICS:
+                    // packetLinkStatistics(hdr);
+                    return crsfProtocol::CRSF_FRAMETYPE_LINK_STATISTICS;
+                }
             }
         } //
+
+        return -1;
     }
 
     inline uint16_t rcToUs(uint16_t rc)
@@ -147,5 +149,33 @@ private:
         _channels[13] = ch->channel13;
         _channels[14] = ch->channel14;
         _channels[15] = ch->channel15;
+    }
+
+    uint8_t gencrc(uint8_t *data, size_t len, uint8_t type)
+    {
+        size_t i, j;
+        uint8_t crc = 0x00;
+        // must check type at first, and skip
+        crc ^= type;
+        for (j = 0; j < 8; j++)
+        {
+            if ((crc & 0x80) != 0)
+                crc = (uint8_t)((crc << 1) ^ 0xd5);
+            else
+                crc <<= 1;
+        }
+        //
+        for (i = 0; i < len; i++)
+        {
+            crc ^= data[i];
+            for (j = 0; j < 8; j++)
+            {
+                if ((crc & 0x80) != 0)
+                    crc = (uint8_t)((crc << 1) ^ 0xd5);
+                else
+                    crc <<= 1;
+            }
+        }
+        return crc;
     }
 };

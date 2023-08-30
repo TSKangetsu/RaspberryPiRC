@@ -270,7 +270,10 @@ int main(int argc, char *argv[])
                 }
                 //
                 timee = GetTimestamp() - TimestartUpLoad;
-                std::cout << "last frame time : " << timee - time << "\n";
+                std::cout << "ret: " << retValue
+                          << "last frame time : " << timee - time << " "
+                          << "\n";
+                ;
             }
         }
         break;
