@@ -20,10 +20,12 @@
 
 #include "CRSFProtocol.hpp"
 
+#define CRSF_DEFAULT_BANDRATE 420000
+
 class CRSFCRSFUartRC
 {
 public:
-    inline CRSFCRSFUartRC(const char *UartDevice, int bandrate = 9600)
+    inline CRSFCRSFUartRC(const char *UartDevice, int bandrate = CRSF_DEFAULT_BANDRATE)
     {
         CRSFUart_fd = open(UartDevice, O_RDWR | O_CLOEXEC);
         if (CRSFUart_fd == -1)
@@ -37,10 +39,30 @@ public:
             CRSFUart_fd = -1;
         }
 
+        // options.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL | IXON);
+        // options.c_iflag |= (INPCK | IGNPAR);
+        // options.c_oflag &= ~OPOST;
+        // options.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+        // options.c_cflag &= ~(CSIZE | CRTSCTS | PARODD | CBAUD);
+        // options.c_cflag |= (CS8 | CSTOPB | CLOCAL | PARENB | BOTHER | CREAD);
+
+        // options.c_cflag |= BOTHER;
+        // options.c_cflag &= ~CBAUD;
+        // options.c_iflag = 0;
+        // options.c_oflag = 0;
+        // options.c_lflag = 0;
+        // options.c_ispeed = 420000;
+        // options.c_ospeed = 420000;
+
+        // options.c_cflag = B115200 | CS8 | CLOCAL | CREAD;
+        // options.c_iflag = IGNPAR;
+        // options.c_oflag = 0;
+        // options.c_lflag = 0;
+
         options.c_cflag &= ~CBAUD;
         options.c_cflag |= BOTHER;
-        options.c_ispeed = 420000;
-        options.c_ospeed = 420000;
+        options.c_ispeed = bandrate;
+        options.c_ospeed = bandrate;
 
         if (0 != ioctl(CRSFUart_fd, TCSETS2, &options))
         {
