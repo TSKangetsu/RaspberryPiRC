@@ -265,13 +265,13 @@ int main(int argc, char *argv[])
                 }
                 else
                 {
-                    std::cout << " error frame recived"
+                    std::cout << "error frame recived"
                               << "\n";
                 }
                 //
                 timee = GetTimestamp() - TimestartUpLoad;
                 std::cout << "ret: " << retValue
-                          << "last frame time : " << timee - time << " "
+                          << " last frame time : " << timee - time << " "
                           << "\n";
                 ;
             }

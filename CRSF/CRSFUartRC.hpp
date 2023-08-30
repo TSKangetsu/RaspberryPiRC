@@ -39,9 +39,20 @@ public:
             CRSFUart_fd = -1;
         }
 
+        // options.c_cflag = B460800 | CS8 | CLOCAL | CREAD;
+        // options.c_iflag = 0;
+        // options.c_oflag = 0;
+        // options.c_lflag = 0;
+
+        // usleep(200 * 1000);
+
+        // seens to must set BBAUD and ~CBAUD, and set i/o/l parament, then kernel can find out baudrate
         options.c_cflag = B460800 | CS8 | CLOCAL | CREAD;
         options.c_cflag &= ~CBAUD;
         options.c_cflag |= BOTHER;
+        options.c_iflag = 0;
+        options.c_oflag = 0;
+        options.c_lflag = 0;
         options.c_ispeed = bandrate;
         options.c_ospeed = bandrate;
 
