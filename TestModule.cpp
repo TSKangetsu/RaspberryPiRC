@@ -247,14 +247,14 @@ int main(int argc, char *argv[])
         {
             long int time;
             long int timee;
-            CRSFCRSFUartRC test(optarg);
+            CRSF test(optarg);
             int channelData[50];
 
             while (true)
             {
                 time = GetTimestamp() - TimestartUpLoad;
                 //
-                int retValue = test.CRSFRead(channelData, -1, -1);
+                int retValue = test.CRSFRead(channelData);
                 if (retValue > 0)
                 {
                     for (size_t i = 0; i < 15; i++)
@@ -273,7 +273,6 @@ int main(int argc, char *argv[])
                 std::cout << "ret: " << retValue
                           << " last frame time : " << timee - time << " "
                           << "\n";
-                ;
             }
         }
         break;

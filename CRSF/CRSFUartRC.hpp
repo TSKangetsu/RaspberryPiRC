@@ -22,12 +22,12 @@
 
 #define CRSF_DEFAULT_BANDRATE 420000
 
-class CRSFCRSFUartRC
+class CRSF
 {
 public:
-    inline CRSFCRSFUartRC(const char *UartDevice, int bandrate = CRSF_DEFAULT_BANDRATE)
+    inline CRSF(const char *UartDevice, int bandrate = CRSF_DEFAULT_BANDRATE)
     {
-        CRSFUart_fd = open(UartDevice, O_RDWR | O_CLOEXEC);
+        CRSFUart_fd = open(UartDevice, O_RDWR | O_CLOEXEC | O_NONBLOCK);
         if (CRSFUart_fd == -1)
             throw std::invalid_argument("[UART] CRSF Unable to open device:" + std::string(UartDevice));
 
@@ -64,11 +64,20 @@ public:
         }
     };
 
-    inline int CRSFRead(int *channelsData, int waitTime, int lose_HoldTime)
+    inline int CRSFRead(int *channelsData, int timeout = 100000)
     {
         int ret = -1;
         if (CRSFUart_fd == -1)
             return -1;
+        //
+        FD_ZERO(&fd_Maker);
+        FD_SET(CRSFUart_fd, &fd_Maker);
+        lose_frameCount = 0;
+        //
+        timeval timecl;
+        timecl.tv_sec = 0;
+        timecl.tv_usec = timeout;
+        int err = select(CRSFUart_fd + 1, &fd_Maker, NULL, NULL, &timecl);
         //
         InputBuffer = read(CRSFUart_fd, &dataBuffer, sizeof(dataBuffer));
         if (InputBuffer > 0)
