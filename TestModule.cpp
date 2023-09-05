@@ -1,5 +1,4 @@
 #include <unistd.h>
-#include <unistd.h>
 #include <iostream>
 #include <iomanip>
 #include <thread>
@@ -220,18 +219,30 @@ int main(int argc, char *argv[])
             int x;
             int y;
             int alt;
-            int qulity;
+            int rfqulity;
+            int opqulity;
             std::string myData;
             MSPUartFlow myUart(optarg);
+            system("clear");
             while (true)
             {
                 std::cout << "\n";
-                int Status = myUart.MSPDataRead(x, y, alt, qulity);
-                std::cout << "x:" << x << " \n";
-                std::cout << "y:" << y << " \n";
-                std::cout << "alt:" << alt << " \n";
-                std::cout << "FLowq:" << qulity << " \n";
-                std::cout << "Status:" << Status << " \n";
+                std::cout << "\033[100A";
+                std::cout << "\033[K";
+                int Status = myUart.MSPDataRead(x, y, opqulity, alt, rfqulity);
+                if (Status > 0)
+                {
+                    std::cout << "x:" << x << " \n";
+                    std::cout << "y:" << y << " \n";
+                    std::cout << "opquality:" << opqulity << " \n";
+                    std::cout << "alt:" << alt << " \n";
+                    std::cout << "rfquality:" << rfqulity << " \n";
+                    std::cout << "Status:" << Status << " \n";
+                }
+                else
+                {
+                    std::cout << "error frame recv\n";
+                }
                 timee = GetTimestamp() - TimestartUpLoad;
                 std::cout << "last frame time : " << timee - time << "\n";
                 time = GetTimestamp() - TimestartUpLoad;

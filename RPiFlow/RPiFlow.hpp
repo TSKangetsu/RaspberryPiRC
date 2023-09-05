@@ -19,6 +19,9 @@
 #undef termios
 #include <termios.h>
 
+#include "../MSP/MSP.h"
+#include "../MSP/MSPSensor.h"
+
 #define CRC_START_8 0x00
 
 class MSPUartFlow
@@ -41,7 +44,7 @@ public:
             MSPUart_fd = -1;
         }
         options.c_cflag = B115200 | CS8 | CLOCAL | CREAD;
-        options.c_iflag = BRKINT;
+        options.c_iflag = 0;
         options.c_oflag = 0;
         options.c_lflag = 0;
         if (0 != ioctl(MSPUart_fd, TCSETS2, &options))
@@ -50,102 +53,88 @@ public:
             MSPUart_fd = -1;
             throw std::invalid_argument("[UART] FLOW init failed");
         }
+
+        inputData.reset(new uint8_t[MSPV2_PAYLOAD_MAX]);
     };
 
-    inline int MSPDataRead(int &XOutput, int &YOutput, int &Altitude, int &DataQuality)
+    inline int MSPDataRead(int &XOutput, int &YOutput, int &OPQuality,
+                           int &AltitudeMm, int &RFQuality,
+                           int timeout = 1000000)
     {
-        bool IsAltitudeFound = false;
-        bool IsMovingFound = false;
-        int Status = 0;
+        int ret = -1;
         if (MSPUart_fd == -1)
             return -1;
+        //
         FD_ZERO(&fd_Maker);
         FD_SET(MSPUart_fd, &fd_Maker);
-        char TmpData[5000];
-        int InputFrame;
-        InputFrame = read(MSPUart_fd, &TmpData, sizeof(TmpData));
-        if (InputFrame > 0)
+        //
+        timeval timecl;
+        timecl.tv_sec = 0;
+        timecl.tv_usec = timeout;
+        int err = select(MSPUart_fd + 1, &fd_Maker, NULL, NULL, &timecl);
+        //
+        int InputFrame = read(MSPUart_fd, inputData.get(), MSPV2_PAYLOAD_MAX);
+        if (InputFrame > 0 && inputData)
         {
-            for (unsigned int i = 0; i < InputFrame; i++)
+            MSPV2 *mspData = (MSPV2 *)inputData.get();
+            MSPV2_CRC *mspDataCRC = (MSPV2_CRC *)inputData.get();
+            // TODO: check CRC
+            uint8_t crcget = gencrc(mspDataCRC->data, mspData->payloadSize + MSPV2_CRC_EXTEND);
+            std::cout << "[UART] check msp crc:" << std::hex
+                      << (int)crcget
+                      << " "
+                      << (int)mspData->payload[mspData->payloadSize]
+                      << std::dec << "\n";
+
+            std::cout << "[UART] check msp data: "
+                      << mspData->header << " "
+                      << mspData->version << " "
+                      << mspData->type << " "
+                      << std::hex
+                      << (int)mspData->flag << " "
+                      << (int)mspData->function << " "
+                      << (int)mspData->payloadSize << " "
+                      << std::dec
+                      << "\n";
+
+            if (crcget == mspData->payload[mspData->payloadSize])
             {
-                if (TmpData[i] == '$')
+                std::cout << "[UART] check MSP raw: " << std::hex;
+                for (size_t i = 0; i < mspData->payloadSize; i++)
                 {
-                    // step 1: get length of data
-                    if (i + 8 < InputFrame)
+                    std::cout << (int)mspData->payload[i] << " ";
+                }
+                std::cout << std::dec << '\n';
+
+                if (mspData->header == '$' && mspData->version == 'X' && mspData->type == '<')
+                {
+                    if (mspData->function == MSP2_SENSOR_RANGEFINDER)
                     {
-                        unsigned int len = (short)((int)TmpData[i + 7] << 8 | (int)TmpData[i + 6]);
-                        if ((i + len) < InputFrame)
-                        {
-                            // step 2: copy dat
-                            recvDataBuffer.clear();
-                            // step 3: copy header
-                            for (size_t s = 0; s < 5; s++)
-                            {
-                                recvDataBuffer.push_back(TmpData[i + 3 + s]);
-                            }
-                            // step 4: copy data
-                            for (size_t s = 0; s < len; s++)
-                            {
-                                recvDataBuffer.push_back(TmpData[i + 3 + 5 + s]);
-                            }
-                            // step 5: get crc from master
-                            uint8_t crcFromMaster = TmpData[i + 3 + 5 + len];
-                            // step 6: caculate data CRC to compare
-                            uint8_t crc8DataParse = gencrc(recvDataBuffer.data(), recvDataBuffer.size());
-#ifdef DEBUG
-                            std::cout << "framelen: " << InputFrame << "\n";
-                            std::cout << "datalen: " << len << "\n";
-                            for (size_t s = 0; s < recvDataBuffer.size(); s++)
-                            {
-                                std::cout << std::setw(2) << std::setfill('0') << std::hex << (int)recvDataBuffer[s] << std::dec << " ";
-                            }
-                            std::cout << "\ngot crc: " << std::hex << (int)crcFromMaster << std::dec << '\n';
-                            std::cout << "CRC from Data: " << std::hex << (int)crc8DataParse << std::dec << "\n-\n";
-#endif
-                            // step 7: check crc is correct, if correct, parsing to data out
-                            if (crc8DataParse == crcFromMaster)
-                            {
-                                if (recvDataBuffer[1] == 1)
-                                {
-                                    Altitude = (short)((int)recvDataBuffer[5 + 2] << 8 | (int)recvDataBuffer[5 + 1]);
-                                    IsAltitudeFound = true;
-                                }
-                                if (recvDataBuffer[1] == 2)
-                                {
-                                    DataQuality = recvDataBuffer[5];
-                                    YOutput = (short)((int)recvDataBuffer[5 + 2] << 8 | (int)recvDataBuffer[5 + 1]);
-                                    XOutput = (short)((int)recvDataBuffer[5 + 6] << 8 | (int)recvDataBuffer[5 + 5]);
-                                    IsMovingFound = true;
-                                }
-                            }
-                            else
-                            {
-#ifdef DEBUG
-                                std::cout << "data CRC mismatch!";
-#endif
-                            }
-                        }
+                        mspSensorRangefinderDataMessage_t *rfdata =
+                            (mspSensorRangefinderDataMessage_t *)mspData->payload;
+                        AltitudeMm = rfdata->distanceMm;
+                        RFQuality = rfdata->quality;
+                        return 1;
+                    }
+                    //
+                    if (mspData->function == MSP2_SENSOR_OPTIC_FLOW)
+                    {
+                        mspSensorOpflowDataMessage_t *opdata =
+                            (mspSensorOpflowDataMessage_t *)mspData->payload;
+                        XOutput = opdata->motionX;
+                        YOutput = opdata->motionY;
+                        OPQuality = opdata->quality;
+                        return 1;
                     }
                 }
             }
-            if (IsMovingFound && IsAltitudeFound)
-                Status = 3;
-            else if (IsMovingFound && !IsAltitudeFound)
-                Status = 2;
-            else if (!IsMovingFound && IsAltitudeFound)
-                Status = 1;
-            else
-                Status = -1;
         }
-        else
-        {
-            Status = -1;
-        }
-        return Status;
+        return ret;
     };
 
     inline ~MSPUartFlow()
     {
+        inputData.reset();
         close(MSPUart_fd);
     };
 
@@ -153,7 +142,7 @@ private:
     fd_set fd_Maker;
     int MSPUart_fd;
     std::string FlowDevice;
-    std::vector<uint8_t> recvDataBuffer;
+    std::unique_ptr<uint8_t> inputData;
 
     uint8_t gencrc(uint8_t *data, size_t len)
     {
