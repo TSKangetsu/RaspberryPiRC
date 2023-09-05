@@ -80,31 +80,31 @@ public:
             MSPV2_CRC *mspDataCRC = (MSPV2_CRC *)inputData.get();
             // TODO: check CRC
             uint8_t crcget = gencrc(mspDataCRC->data, mspData->payloadSize + MSPV2_CRC_EXTEND);
-            std::cout << "[UART] check msp crc:" << std::hex
-                      << (int)crcget
-                      << " "
-                      << (int)mspData->payload[mspData->payloadSize]
-                      << std::dec << "\n";
+            // std::cout << "[UART] check msp crc:" << std::hex
+            //           << (int)crcget
+            //           << " "
+            //           << (int)mspData->payload[mspData->payloadSize]
+            //           << std::dec << "\n";
 
-            std::cout << "[UART] check msp data: "
-                      << mspData->header << " "
-                      << mspData->version << " "
-                      << mspData->type << " "
-                      << std::hex
-                      << (int)mspData->flag << " "
-                      << (int)mspData->function << " "
-                      << (int)mspData->payloadSize << " "
-                      << std::dec
-                      << "\n";
+            // std::cout << "[UART] check msp data: "
+            //           << mspData->header << " "
+            //           << mspData->version << " "
+            //           << mspData->type << " "
+            //           << std::hex
+            //           << (int)mspData->flag << " "
+            //           << (int)mspData->function << " "
+            //           << (int)mspData->payloadSize << " "
+            //           << std::dec
+            //           << "\n";
 
             if (crcget == mspData->payload[mspData->payloadSize])
             {
-                std::cout << "[UART] check MSP raw: " << std::hex;
-                for (size_t i = 0; i < mspData->payloadSize; i++)
-                {
-                    std::cout << (int)mspData->payload[i] << " ";
-                }
-                std::cout << std::dec << '\n';
+                // std::cout << "[UART] check MSP raw: " << std::hex;
+                // for (size_t i = 0; i < mspData->payloadSize; i++)
+                // {
+                //     std::cout << (int)mspData->payload[i] << " ";
+                // }
+                // std::cout << std::dec << '\n';
 
                 if (mspData->header == '$' && mspData->version == 'X' && mspData->type == '<')
                 {
