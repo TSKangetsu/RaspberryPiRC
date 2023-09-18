@@ -124,7 +124,7 @@ public:
                         XOutput = opdata->motionX;
                         YOutput = opdata->motionY;
                         OPQuality = opdata->quality;
-                        return 1;
+                        return 2;
                     }
                 }
             }
