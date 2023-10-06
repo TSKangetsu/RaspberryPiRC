@@ -74,7 +74,7 @@ public:
         int err = select(MSPUart_fd + 1, &fd_Maker, NULL, NULL, &timecl);
         //
         int InputFrame = read(MSPUart_fd, inputData.get(), MSPV2_PAYLOAD_MAX);
-        if (InputFrame > 0 && inputData)
+        if (InputFrame > 8 && inputData) // this size must to length offset
         {
             MSPV2 *mspData = (MSPV2 *)inputData.get();
             MSPV2_CRC *mspDataCRC = (MSPV2_CRC *)inputData.get();
