@@ -20,6 +20,7 @@
 
 #include "CRSFProtocol.hpp"
 
+#define CRSF_MAX_READ_SIZE 500
 #define CRSF_DEFAULT_BANDRATE 420000
 
 class CRSF
@@ -27,6 +28,8 @@ class CRSF
 public:
     inline CRSF(const char *UartDevice, int bandrate = CRSF_DEFAULT_BANDRATE)
     {
+        dataBuffer = new uint8_t[CRSF_MAX_READ_SIZE];
+        //
         CRSFUart_fd = open(UartDevice, O_RDWR | O_CLOEXEC | O_NONBLOCK);
         if (CRSFUart_fd == -1)
             throw std::invalid_argument("[UART] CRSF Unable to open device:" + std::string(UartDevice));
@@ -79,8 +82,8 @@ public:
         timecl.tv_usec = timeout;
         int err = select(CRSFUart_fd + 1, &fd_Maker, NULL, NULL, &timecl);
         //
-        InputBuffer = read(CRSFUart_fd, &dataBuffer, sizeof(dataBuffer));
-        if (InputBuffer > 0)
+        InputBuffer = read(CRSFUart_fd, dataBuffer, CRSF_MAX_READ_SIZE - 2);
+        if (InputBuffer > 3)
         {
             ret = CRSFParser(dataBuffer, InputBuffer, channelsData);
             //
@@ -131,11 +134,17 @@ public:
         } //
 
         return -1;
-    }
+    };
 
     inline uint16_t rcToUs(uint16_t rc)
     {
         return (uint16_t)((rc * 0.62477120195241F) + 881);
+    };
+
+    ~CRSF()
+    {
+        close(CRSFUart_fd);
+        delete dataBuffer;
     };
 
 private:
@@ -146,7 +155,7 @@ private:
     //
     int InputBuffer;
     int lose_frameCount;
-    uint8_t dataBuffer[5000];
+    uint8_t *dataBuffer;
     //
     crsfProtocol::frame_t rcChannelsFrame;
     //
