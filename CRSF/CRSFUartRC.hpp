@@ -118,6 +118,8 @@ public:
 
             if (crc == hdr->frame.payload[hdr->frame.frameLength - 2])
             {
+                // std::cout << "device addr: " << std::hex << (int)hdr->frame.deviceAddress << std::dec << "\n";
+                //
                 switch (hdr->frame.type)
                 {
                 case crsfProtocol::CRSF_FRAMETYPE_GPS:
@@ -136,12 +138,61 @@ public:
         return -1;
     };
 
+    inline void CRSFTelemtry()
+    {
+        crsfProtocol::frameDefinition_t frame;
+
+        frame.deviceAddress = crsfProtocol::CRSF_SYNC_BYTE;
+        frame.frameLength =
+            crsfProtocol::CRSF_FRAME_BATTERY_SENSOR_PAYLOAD_SIZE +
+            crsfProtocol::CRSF_FRAME_LENGTH_TYPE_CRC;
+        frame.type = crsfProtocol::CRSF_FRAMETYPE_BATTERY_SENSOR;
+
+        /*
+        0x08 Battery sensor
+        Payload:
+        uint16_t    Voltage ( mV * 100 )
+        uint16_t    Current ( mA * 100 )
+        uint24_t    Capacity ( mAh )
+        uint8_t     Battery remaining ( percent )
+        */
+        frame.payload[0] = (uint8_t)(160 >> 8);
+        frame.payload[1] = (uint8_t)(160);
+        frame.payload[2] = (uint8_t)(160 >> 8);
+        frame.payload[3] = (uint8_t)(160);
+        frame.payload[4] = (uint8_t)(800 >> 16);
+        frame.payload[5] = (uint8_t)(800 >> 8);
+        frame.payload[6] = (uint8_t)(800);
+        frame.payload[7] = (uint8_t)(80);
+        uint8_t crc = gencrc((uint8_t *)frame.payload,
+                             crsfProtocol::CRSF_FRAME_BATTERY_SENSOR_PAYLOAD_SIZE,
+                             crsfProtocol::CRSF_FRAMETYPE_BATTERY_SENSOR);
+        frame.payload[8] = crc;
+
+        crsfProtocol::frame_t frameout;
+        frameout.frame = frame;
+        //
+        int ret = write(CRSFUart_fd,
+                        frameout.raw,
+                        crsfProtocol::CRSF_FRAME_BATTERY_SENSOR_PAYLOAD_SIZE +
+                            crsfProtocol::CRSF_FRAME_LENGTH_TYPE_CRC + 4);
+
+        for (size_t i = 0; i < 15; i++)
+        {
+            std::cout << std::setw(2) << std::setfill('0')
+                      << std::hex << (int)frameout.raw[i] << std::dec << " ";
+        }
+        std::cout << '\n';
+
+        std::cout << "crsf tel:" << ret << std::hex << "crc: " << (int)crc << std::dec << "\n";
+    }
+
     inline uint16_t rcToUs(uint16_t rc)
     {
         return (uint16_t)((rc * 0.62477120195241F) + 881);
     };
 
-    ~CRSF()
+    inline ~CRSF()
     {
         close(CRSFUart_fd);
         delete dataBuffer;

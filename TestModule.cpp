@@ -260,6 +260,17 @@ int main(int argc, char *argv[])
             long int timee;
             CRSF test(optarg);
             int channelData[50];
+            //
+            std::thread telethread =
+                std::thread(
+                    [&]
+                    {
+                        while (true)
+                        {
+                            test.CRSFTelemtry();
+                            usleep(200 * 1000);
+                        }
+                    });
 
             while (true)
             {
@@ -268,22 +279,22 @@ int main(int argc, char *argv[])
                 int retValue = test.CRSFRead(channelData);
                 if (retValue > 0)
                 {
-                    for (size_t i = 0; i < 15; i++)
-                    {
-                        std::cout << test.rcToUs(channelData[i]) << " ";
-                    }
-                    std::cout << "\n";
+                    // for (size_t i = 0; i < 15; i++)
+                    // {
+                    //     std::cout << test.rcToUs(channelData[i]) << " ";
+                    // }
+                    // std::cout << "\n";
                 }
                 else
                 {
-                    std::cout << "error frame recived"
-                              << "\n";
+                    // std::cout << "error frame recived"
+                    //           << "\n";
                 }
                 //
                 timee = GetTimestamp() - TimestartUpLoad;
-                std::cout << "ret: " << retValue
-                          << " last frame time : " << timee - time << " "
-                          << "\n";
+                // std::cout << "ret: " << retValue
+                //           << " last frame time : " << timee - time << " "
+                //           << "\n";
             }
         }
         break;
