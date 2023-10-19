@@ -23,6 +23,112 @@
 #define CRSF_MAX_READ_SIZE 500
 #define CRSF_DEFAULT_BANDRATE 420000
 
+#define M_PIf 3.14159265358979323846f
+#define M_LN2f 0.69314718055994530942f
+#define M_Ef 2.71828182845904523536f
+
+#define RAD (M_PIf / 180.0f)
+
+namespace CRSFTelemetry
+{
+    /*
+    0x08 Battery sensor
+    Payload:
+    uint16_t    Voltage ( mV * 100 )
+    uint16_t    Current ( mA * 100 )
+    uint24_t    Capacity ( mAh )
+    uint8_t     Battery remaining ( percent )
+    */
+    inline crsfProtocol::crsfFrameDef_t crsfFrameBatterySensor(uint8_t address,
+                                                               uint16_t Voltage,
+                                                               uint16_t Current,
+                                                               uint32_t Capacity,
+                                                               uint8_t BatteryInpercent)
+    {
+        crsfProtocol::crsfFrameDef_t frame;
+
+        frame.deviceAddress = address;
+        frame.frameLength =
+            crsfProtocol::CRSF_FRAME_BATTERY_SENSOR_PAYLOAD_SIZE;
+        frame.type = crsfProtocol::CRSF_FRAMETYPE_BATTERY_SENSOR;
+
+        frame.payload[0] = (uint8_t)(Voltage >> 8);
+        frame.payload[1] = (uint8_t)(Voltage);
+        frame.payload[2] = (uint8_t)(Current >> 8);
+        frame.payload[3] = (uint8_t)(Current);
+        frame.payload[4] = (uint8_t)(Capacity >> 16);
+        frame.payload[5] = (uint8_t)(Capacity >> 8);
+        frame.payload[6] = (uint8_t)(Capacity);
+        frame.payload[7] = (uint8_t)(BatteryInpercent);
+
+        return frame;
+    }
+
+    inline static int16_t _decidegrees2Radians10000(int16_t angle_decidegree)
+    {
+        while (angle_decidegree > 1800)
+        {
+            angle_decidegree -= 3600;
+        }
+        while (angle_decidegree < -1800)
+        {
+            angle_decidegree += 3600;
+        }
+        return (int16_t)(RAD * 1000.0f * angle_decidegree);
+    }
+
+    /*
+    0x1E Attitude
+    Payload:
+    int16_t     Pitch angle * 10
+    int16_t     Roll angle * 10
+    int16_t     Yaw angle * 10
+    */
+    inline crsfProtocol::crsfFrameDef_t crsfFrameAttitude(uint8_t address,
+                                                          uint16_t pitch,
+                                                          uint16_t roll,
+                                                          uint16_t yaw)
+    {
+        crsfProtocol::crsfFrameDef_t frame;
+
+        frame.deviceAddress = address;
+        frame.frameLength =
+            crsfProtocol::CRSF_FRAME_ATTITUDE_PAYLOAD_SIZE;
+        frame.type = crsfProtocol::CRSF_FRAMETYPE_ATTITUDE;
+
+        // int16_t     Pitch angle ( rad / 10000 )
+        // int16_t     Roll angle ( rad / 10000 )
+        // int16_t     Yaw angle ( rad / 10000 )
+        uint16_t pitchRad = _decidegrees2Radians10000(pitch);
+        frame.payload[0] = (uint8_t)(pitchRad >> 8);
+        frame.payload[1] = (uint8_t)pitchRad;
+        uint16_t rollRad = _decidegrees2Radians10000(roll);
+        frame.payload[2] = (uint8_t)(rollRad >> 8);
+        frame.payload[3] = (uint8_t)rollRad;
+        uint16_t yawRad = _decidegrees2Radians10000(yaw);
+        frame.payload[4] = (uint8_t)(yawRad >> 8);
+        frame.payload[5] = (uint8_t)yawRad;
+
+        return frame;
+    }
+
+    /*
+    0x21 Flight mode text based
+    Payload:
+    char[]      Flight mode ( Null­terminated string )
+    */
+    inline crsfProtocol::crsfFrameDef_t crsfFrameFlightMode(uint8_t address, const char *flightMode)
+    {
+        crsfProtocol::crsfFrameDef_t frame;
+
+        frame.deviceAddress = address;
+        frame.frameLength = strlen(flightMode) + 1;
+        frame.type = crsfProtocol::CRSF_FRAMETYPE_FLIGHT_MODE;
+        std::copy(flightMode, flightMode + strlen(flightMode) + 1, frame.payload);
+        return frame;
+    }
+};
+
 class CRSF
 {
 public:
@@ -101,7 +207,7 @@ public:
 
     int CRSFParser(uint8_t *data, int size, int channelsOut[15])
     {
-        const crsfProtocol::frame_t *hdr = (crsfProtocol::frame_t *)data;
+        const crsfProtocol::crsfFrame_t *hdr = (crsfProtocol::crsfFrame_t *)data;
         if (hdr->frame.deviceAddress == crsfProtocol::CRSF_ADDRESS_FLIGHT_CONTROLLER)
         {
             uint8_t crc = gencrc((uint8_t *)(hdr->frame.payload), hdr->frame.frameLength - 2, hdr->frame.type);
@@ -138,55 +244,6 @@ public:
         return -1;
     };
 
-    inline void CRSFTelemtry()
-    {
-        crsfProtocol::frameDefinition_t frame;
-
-        frame.deviceAddress = crsfProtocol::CRSF_SYNC_BYTE;
-        frame.frameLength =
-            crsfProtocol::CRSF_FRAME_BATTERY_SENSOR_PAYLOAD_SIZE +
-            crsfProtocol::CRSF_FRAME_LENGTH_TYPE_CRC;
-        frame.type = crsfProtocol::CRSF_FRAMETYPE_BATTERY_SENSOR;
-
-        /*
-        0x08 Battery sensor
-        Payload:
-        uint16_t    Voltage ( mV * 100 )
-        uint16_t    Current ( mA * 100 )
-        uint24_t    Capacity ( mAh )
-        uint8_t     Battery remaining ( percent )
-        */
-        frame.payload[0] = (uint8_t)(160 >> 8);
-        frame.payload[1] = (uint8_t)(160);
-        frame.payload[2] = (uint8_t)(160 >> 8);
-        frame.payload[3] = (uint8_t)(160);
-        frame.payload[4] = (uint8_t)(800 >> 16);
-        frame.payload[5] = (uint8_t)(800 >> 8);
-        frame.payload[6] = (uint8_t)(800);
-        frame.payload[7] = (uint8_t)(80);
-        uint8_t crc = gencrc((uint8_t *)frame.payload,
-                             crsfProtocol::CRSF_FRAME_BATTERY_SENSOR_PAYLOAD_SIZE,
-                             crsfProtocol::CRSF_FRAMETYPE_BATTERY_SENSOR);
-        frame.payload[8] = crc;
-
-        crsfProtocol::frame_t frameout;
-        frameout.frame = frame;
-        //
-        int ret = write(CRSFUart_fd,
-                        frameout.raw,
-                        crsfProtocol::CRSF_FRAME_BATTERY_SENSOR_PAYLOAD_SIZE +
-                            crsfProtocol::CRSF_FRAME_LENGTH_TYPE_CRC + 4);
-
-        for (size_t i = 0; i < 15; i++)
-        {
-            std::cout << std::setw(2) << std::setfill('0')
-                      << std::hex << (int)frameout.raw[i] << std::dec << " ";
-        }
-        std::cout << '\n';
-
-        std::cout << "crsf tel:" << ret << std::hex << "crc: " << (int)crc << std::dec << "\n";
-    }
-
     inline uint16_t rcToUs(uint16_t rc)
     {
         return (uint16_t)((rc * 0.62477120195241F) + 881);
@@ -198,6 +255,31 @@ public:
         delete dataBuffer;
     };
 
+    inline void CRSFTelemtry(crsfProtocol::crsfFrameDef_t TelemetryData)
+    {
+        crsfProtocol::crsfFrame_t frameout;
+
+        uint8_t crc = gencrc((uint8_t *)TelemetryData.payload,
+                             TelemetryData.frameLength,
+                             TelemetryData.type);
+        TelemetryData.payload[TelemetryData.frameLength] = crc;
+
+        TelemetryData.frameLength += crsfProtocol::CRSF_FRAME_LENGTH_TYPE_CRC;
+
+        frameout.frame = TelemetryData;
+
+        int ret = write(CRSFUart_fd, frameout.bytes, TelemetryData.frameLength + 4);
+
+        // for (size_t i = 0; i < TelemetryData.frameLength + 4; i++)
+        // {
+        //     std::cout << std::setw(2) << std::setfill('0')
+        //               << std::hex << (int)frameout.bytes[i] << std::dec << " ";
+        // }
+        // std::cout << '\n';
+
+        // std::cout << "crsf tel:" << ret << std::hex << " crc: " << (int)crc << std::dec << "\n";
+    }
+
 private:
     fd_set fd_Maker;
     //
@@ -208,27 +290,28 @@ private:
     int lose_frameCount;
     uint8_t *dataBuffer;
     //
-    crsfProtocol::frame_t rcChannelsFrame;
+    crsfProtocol::crsfPayloadRcChannelsPacked_s rcChannelsFrame;
     //
-    void packetChannelsPacked(const crsfProtocol::frame_t *p, int _channels[15])
+    void packetChannelsPacked(const crsfProtocol::crsfFrame_t *p, int _channels[15])
     {
-        crsfProtocol::rcChannelsPacked_t *ch = (crsfProtocol::rcChannelsPacked_t *)&p->frame.payload;
-        _channels[0] = ch->channel0;
-        _channels[1] = ch->channel1;
-        _channels[2] = ch->channel2;
-        _channels[3] = ch->channel3;
-        _channels[4] = ch->channel4;
-        _channels[5] = ch->channel5;
-        _channels[6] = ch->channel6;
-        _channels[7] = ch->channel7;
-        _channels[8] = ch->channel8;
-        _channels[9] = ch->channel9;
-        _channels[10] = ch->channel10;
-        _channels[11] = ch->channel11;
-        _channels[12] = ch->channel12;
-        _channels[13] = ch->channel13;
-        _channels[14] = ch->channel14;
-        _channels[15] = ch->channel15;
+        crsfProtocol::crsfPayloadRcChannelsPacked_s *ch =
+            (crsfProtocol::crsfPayloadRcChannelsPacked_s *)&p->frame.payload;
+        _channels[0] = ch->chan0;
+        _channels[1] = ch->chan1;
+        _channels[2] = ch->chan2;
+        _channels[3] = ch->chan3;
+        _channels[4] = ch->chan4;
+        _channels[5] = ch->chan5;
+        _channels[6] = ch->chan6;
+        _channels[7] = ch->chan7;
+        _channels[8] = ch->chan8;
+        _channels[9] = ch->chan9;
+        _channels[10] = ch->chan10;
+        _channels[11] = ch->chan11;
+        _channels[12] = ch->chan12;
+        _channels[13] = ch->chan13;
+        _channels[14] = ch->chan14;
+        _channels[15] = ch->chan15;
     }
 
     uint8_t gencrc(uint8_t *data, size_t len, uint8_t type)

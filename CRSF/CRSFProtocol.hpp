@@ -28,93 +28,63 @@
 
 namespace crsfProtocol
 {
-    enum rc_channels_e
+    enum
     {
-        RC_CHANNEL_ROLL = 0,
-        RC_CHANNEL_PITCH,
-        RC_CHANNEL_THROTTLE,
-        RC_CHANNEL_YAW,
-        RC_CHANNEL_AUX1,
-        RC_CHANNEL_AUX2,
-        RC_CHANNEL_AUX3,
-        RC_CHANNEL_AUX4,
-        RC_CHANNEL_AUX5,
-        RC_CHANNEL_AUX6,
-        RC_CHANNEL_AUX7,
-        RC_CHANNEL_AUX8,
-        RC_CHANNEL_AUX9,
-        RC_CHANNEL_AUX10,
-        RC_CHANNEL_AUX11,
-        RC_CHANNEL_AUX12,
-        RC_CHANNEL_COUNT
+        CRSF_SYNC_BYTE = 0xC8
     };
 
-    enum syncByte_e
+    enum
     {
-        CRSF_SYNC_BYTE = 0xC8,
-    };
-
-    enum frameSize_e
+        CRSF_FRAME_SIZE_MAX = 64
+    }; // 62 bytes frame plus 2 bytes frame header(<length><type>)
+    enum
     {
-        CRSF_FRAME_SIZE_MAX = 64,
         CRSF_PAYLOAD_SIZE_MAX = CRSF_FRAME_SIZE_MAX - 6
     };
 
-    enum payloadSize_e
+    enum
+    {
+        CRSF_DISPLAYPORT_SUBCMD_UPDATE = 0x01, // transmit displayport buffer to remote
+        CRSF_DISPLAYPORT_SUBCMD_CLEAR = 0X02,  // clear client screen
+        CRSF_DISPLAYPORT_SUBCMD_OPEN = 0x03,   // client request to open cms menu
+        CRSF_DISPLAYPORT_SUBCMD_CLOSE = 0x04,  // client request to close cms menu
+        CRSF_DISPLAYPORT_SUBCMD_POLL = 0x05,   // client request to poll/refresh cms menu
+    };
+
+    enum
+    {
+        CRSF_DISPLAYPORT_OPEN_ROWS_OFFSET = 1,
+        CRSF_DISPLAYPORT_OPEN_COLS_OFFSET = 2,
+    };
+
+    enum
     {
         CRSF_FRAME_GPS_PAYLOAD_SIZE = 15,
-        CRSF_FRAME_VARIO_PAYLOAD_SIZE = 2,
-        CRSF_FRAME_BARO_ALTITUDE_PAYLOAD_SIZE = 4, // TBS is 2, ExpressLRS is 4 (combines vario)
+        CRSF_FRAME_VARIO_SENSOR_PAYLOAD_SIZE = 2,
         CRSF_FRAME_BATTERY_SENSOR_PAYLOAD_SIZE = 8,
-        CRSF_FRAME_DEVICE_INFO_PAYLOAD_SIZE = 48,
-        CRSF_FRAME_FLIGHT_MODE_PAYLOAD_SIZE = 16,
-        CRSF_FRAME_HEARTBEAT_PAYLOAD_SIZE = 2,
         CRSF_FRAME_LINK_STATISTICS_PAYLOAD_SIZE = 10,
-        CRSF_FRAME_LINK_STATISTICS_TX_PAYLOAD_SIZE = 6,
-        CRSF_FRAME_RC_CHANNELS_PAYLOAD_SIZE = 22,
-        CRSF_FRAME_ATTITUDE_PAYLOAD_SIZE = 6
+        CRSF_FRAME_RC_CHANNELS_PAYLOAD_SIZE = 22, // 11 bits per channel * 16 channels = 22 bytes.
+        CRSF_FRAME_ATTITUDE_PAYLOAD_SIZE = 6,
+        CRSF_FRAME_LENGTH_ADDRESS = 1,      // length of ADDRESS field
+        CRSF_FRAME_LENGTH_FRAMELENGTH = 1,  // length of FRAMELENGTH field
+        CRSF_FRAME_LENGTH_TYPE = 1,         // length of TYPE field
+        CRSF_FRAME_LENGTH_CRC = 1,          // length of CRC field
+        CRSF_FRAME_LENGTH_TYPE_CRC = 2,     // length of TYPE and CRC fields combined
+        CRSF_FRAME_LENGTH_EXT_TYPE_CRC = 4, // length of Extended Dest/Origin, TYPE and CRC fields combined
+        CRSF_FRAME_LENGTH_NON_PAYLOAD = 4,  // combined length of all fields except payload
     };
 
-    enum frameLength_e
+    enum
     {
-        CRSF_FRAME_LENGTH_ADDRESS = 1,                                               // Length of the address field in bytes.
-        CRSF_FRAME_LENGTH_FRAMELENGTH = 1,                                           // Length of the frame length field in bytes.
-        CRSF_FRAME_LENGTH_TYPE = 1,                                                  // Length of the type field in bytes.
-        CRSF_FRAME_LENGTH_CRC = 1,                                                   // Length of the CRC field in bytes.
-        CRSF_FRAME_LENGTH_TYPE_CRC = CRSF_FRAME_LENGTH_TYPE + CRSF_FRAME_LENGTH_CRC, // Length of the type and CRC fields in bytes.
-        CRSF_FRAME_LENGTH_EXT_TYPE_CRC = 4,                                          // Length of the extended Dest/Origin, type, and CRC fields in bytes.
-        CRSF_FRAME_LENGTH_NON_PAYLOAD = 4                                            // Combined length of all fields except the payload in bytes.
+        CRSF_FRAME_TX_MSP_FRAME_SIZE = 58,
+        CRSF_FRAME_RX_MSP_FRAME_SIZE = 8,
+        CRSF_FRAME_ORIGIN_DEST_SIZE = 2,
     };
 
-    typedef enum frameType_e
-    {
-        CRSF_FRAMETYPE_GPS = 0x02,
-        CRSF_FRAMETYPE_VARIO = 0x07,
-        CRSF_FRAMETYPE_BATTERY_SENSOR = 0x08,
-        CRSF_FRAMETYPE_BARO_ALTITUDE = 0x09,
-        CRSF_FRAMETYPE_HEARTBEAT = 0x0B,
-        CRSF_FRAMETYPE_LINK_STATISTICS = 0x14,
-        CRSF_FRAMETYPE_RC_CHANNELS_PACKED = 0x16,
-        CRSF_FRAMETYPE_SUBSET_RC_CHANNELS_PACKED = 0x17,
-        CRSF_FRAMETYPE_LINK_STATISTICS_RX = 0x1C,
-        CRSF_FRAMETYPE_LINK_STATISTICS_TX = 0x1D,
-        CRSF_FRAMETYPE_ATTITUDE = 0x1E,
-        CRSF_FRAMETYPE_FLIGHT_MODE = 0x21,
+// Clashes with CRSF_ADDRESS_FLIGHT_CONTROLLER
+#define CRSF_TELEMETRY_SYNC_BYTE 0XC8
 
-        CRSF_FRAMETYPE_DEVICE_PING = 0x28,
-        CRSF_FRAMETYPE_DEVICE_INFO = 0x29,
-        CRSF_FRAMETYPE_PARAMETER_SETTINGS_ENTRY = 0x2B,
-        CRSF_FRAMETYPE_PARAMETER_READ = 0x2C,
-        CRSF_FRAMETYPE_PARAMETER_WRITE = 0x2D,
-        CRSF_FRAMETYPE_COMMAND = 0x32,
-
-        CRSF_FRAMETYPE_MSP_REQ = 0x7A,
-        CRSF_FRAMETYPE_MSP_RESP = 0x7B,
-        CRSF_FRAMETYPE_MSP_WRITE = 0x7C,
-        CRSF_FRAMETYPE_DISPLAYPORT_CMD = 0x7D,
-    } frameType_t;
-
-    typedef enum address_e
+    typedef enum
     {
         CRSF_ADDRESS_BROADCAST = 0x00,
         CRSF_ADDRESS_USB = 0x10,
@@ -129,78 +99,64 @@ namespace crsfProtocol
         CRSF_ADDRESS_RADIO_TRANSMITTER = 0xEA,
         CRSF_ADDRESS_CRSF_RECEIVER = 0xEC,
         CRSF_ADDRESS_CRSF_TRANSMITTER = 0xEE
-    } address_t;
+    } crsfAddress_e;
 
-    // Schedule array to send telemetry frames.
     typedef enum
     {
-        CRSF_TELEMETRY_FRAME_START_INDEX = 0,
-        // CRSF_TELEMETRY_FRAME_ATTITUDE_INDEX,
-        // CRSF_TELEMETRY_FRAME_BARO_ALTITUDE_INDEX,
-        // CRSF_TELEMETRY_FRAME_BATTERY_SENSOR_INDEX,
-        // CRSF_TELEMETRY_FRAME_FLIGHT_MODE_INDEX,
-        CRSF_TELEMETRY_FRAME_GPS_INDEX,
-        // CRSF_TELEMETRY_FRAME_HEARTBEAT_INDEX,
-        // CRSF_TELEMETRY_FRAME_VARIO_INDEX,
-        CRSF_TELEMETRY_FRAME_SCHEDULE_MAX
-    } telemetryFrame_t;
+        CRSF_FRAMETYPE_GPS = 0x02,
+        CRSF_FRAMETYPE_VARIO_SENSOR = 0x07,
+        CRSF_FRAMETYPE_BATTERY_SENSOR = 0x08,
+        CRSF_FRAMETYPE_LINK_STATISTICS = 0x14,
+        CRSF_FRAMETYPE_RC_CHANNELS_PACKED = 0x16,
+        CRSF_FRAMETYPE_ATTITUDE = 0x1E,
+        CRSF_FRAMETYPE_FLIGHT_MODE = 0x21,
+        // Extended Header Frames, range: 0x28 to 0x96
+        CRSF_FRAMETYPE_DEVICE_PING = 0x28,
+        CRSF_FRAMETYPE_DEVICE_INFO = 0x29,
+        CRSF_FRAMETYPE_PARAMETER_SETTINGS_ENTRY = 0x2B,
+        CRSF_FRAMETYPE_PARAMETER_READ = 0x2C,
+        CRSF_FRAMETYPE_PARAMETER_WRITE = 0x2D,
+        CRSF_FRAMETYPE_COMMAND = 0x32,
+        // MSP commands
+        CRSF_FRAMETYPE_MSP_REQ = 0x7A,         // response request using msp sequence as command
+        CRSF_FRAMETYPE_MSP_RESP = 0x7B,        // reply with 58 byte chunked binary
+        CRSF_FRAMETYPE_MSP_WRITE = 0x7C,       // write with 8 byte chunked binary (OpenTX outbound telemetry buffer limit)
+        CRSF_FRAMETYPE_DISPLAYPORT_CMD = 0x7D, // displayport control command
+    } crsfFrameType_e;
 
-    // RC Channels Packed. 22 bytes (11 bits per channel, 16 channels) total.
-    struct rcChannelsPacked_s
+    typedef struct crsfFrameDef_s
     {
-        uint16_t channel0 : 11;
-        uint16_t channel1 : 11;
-        uint16_t channel2 : 11;
-        uint16_t channel3 : 11;
-        uint16_t channel4 : 11;
-        uint16_t channel5 : 11;
-        uint16_t channel6 : 11;
-        uint16_t channel7 : 11;
-        uint16_t channel8 : 11;
-        uint16_t channel9 : 11;
-        uint16_t channel10 : 11;
-        uint16_t channel11 : 11;
-        uint16_t channel12 : 11;
-        uint16_t channel13 : 11;
-        uint16_t channel14 : 11;
-        uint16_t channel15 : 11;
-    } __attribute__((packed));
+        uint8_t deviceAddress;
+        uint8_t frameLength;
+        uint8_t type;
+        uint8_t payload[CRSF_PAYLOAD_SIZE_MAX + 1]; // +1 for CRC at end of payload
+    } crsfFrameDef_t;
 
-    typedef struct rcChannelsPacked_s rcChannelsPacked_t;
-
-    typedef struct frameDefinition_s
+    typedef union crsfFrame_u
     {
-        uint8_t deviceAddress;                                          // Frame address.
-        uint8_t frameLength;                                            // Frame length. Includes payload and CRC.
-        uint8_t type;                                                   // Frame type.
-        uint8_t payload[CRSF_PAYLOAD_SIZE_MAX + CRSF_FRAME_LENGTH_CRC]; // Frame payload.
-    } frameDefinition_t;
+        uint8_t bytes[CRSF_FRAME_SIZE_MAX];
+        crsfFrameDef_t frame;
+    } crsfFrame_t;
 
-    typedef union frame_u
+    struct crsfPayloadRcChannelsPacked_s
     {
-        uint8_t raw[CRSF_FRAME_SIZE_MAX];
-        frameDefinition_t frame;
-    } frame_t;
+        // 176 bits of data (11 bits per channel * 16 channels) = 22 bytes.
+        unsigned int chan0 : 11;
+        unsigned int chan1 : 11;
+        unsigned int chan2 : 11;
+        unsigned int chan3 : 11;
+        unsigned int chan4 : 11;
+        unsigned int chan5 : 11;
+        unsigned int chan6 : 11;
+        unsigned int chan7 : 11;
+        unsigned int chan8 : 11;
+        unsigned int chan9 : 11;
+        unsigned int chan10 : 11;
+        unsigned int chan11 : 11;
+        unsigned int chan12 : 11;
+        unsigned int chan13 : 11;
+        unsigned int chan14 : 11;
+        unsigned int chan15 : 11;
+    } __attribute__((__packed__));
 
-    // GPS Data to pass to the telemetry frame.
-    typedef struct gpsData_s
-    {
-        int32_t latitude;
-        int32_t longitude;
-        uint16_t altitude;
-        uint16_t speed;
-        uint16_t groundCourse;
-        uint8_t satellites;
-    } gpsData_t;
-
-    // Struct to hold data for the telemetry frame.
-    typedef struct telemetryData_s
-    {
-        gpsData_t gps;
-    } telemetryData_t;
-
-    enum baudRate_e
-    {
-        BAUD_RATE = 420000
-    };
 } // namespace crsfProtocol

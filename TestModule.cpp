@@ -267,7 +267,17 @@ int main(int argc, char *argv[])
                     {
                         while (true)
                         {
-                            test.CRSFTelemtry();
+                            test.CRSFTelemtry(
+                                CRSFTelemetry::crsfFrameBatterySensor(
+                                    crsfProtocol::CRSF_SYNC_BYTE,
+                                    160, 160, 800, 80));
+
+                            test.CRSFTelemtry(
+                                CRSFTelemetry::crsfFrameAttitude(
+                                    crsfProtocol::CRSF_SYNC_BYTE,
+                                    50, 150, 300));
+
+                            test.CRSFTelemtry(CRSFTelemetry::crsfFrameFlightMode(crsfProtocol::CRSF_SYNC_BYTE, "HELO"));
                             usleep(200 * 1000);
                         }
                     });
@@ -279,22 +289,22 @@ int main(int argc, char *argv[])
                 int retValue = test.CRSFRead(channelData);
                 if (retValue > 0)
                 {
-                    // for (size_t i = 0; i < 15; i++)
-                    // {
-                    //     std::cout << test.rcToUs(channelData[i]) << " ";
-                    // }
-                    // std::cout << "\n";
+                    for (size_t i = 0; i < 15; i++)
+                    {
+                        std::cout << test.rcToUs(channelData[i]) << " ";
+                    }
+                    std::cout << "\n";
                 }
                 else
                 {
-                    // std::cout << "error frame recived"
-                    //           << "\n";
+                    std::cout << "error frame recived"
+                              << "\n";
                 }
                 //
                 timee = GetTimestamp() - TimestartUpLoad;
-                // std::cout << "ret: " << retValue
-                //           << " last frame time : " << timee - time << " "
-                //           << "\n";
+                std::cout << "ret: " << retValue
+                          << " last frame time : " << timee - time << " "
+                          << "\n";
             }
         }
         break;
