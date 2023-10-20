@@ -278,6 +278,11 @@ int main(int argc, char *argv[])
                                     50, 150, 300));
 
                             test.CRSFTelemtry(CRSFTelemetry::crsfFrameFlightMode(crsfProtocol::CRSF_SYNC_BYTE, "HELO"));
+
+                            test.CRSFTelemtry(CRSFTelemetry::crsfFrameGps(
+                                crsfProtocol::CRSF_SYNC_BYTE,
+                                0, 0, 10, 200, 1005, 8));
+
                             usleep(200 * 1000);
                         }
                     });

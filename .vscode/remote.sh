@@ -1,6 +1,9 @@
-ssh $1@$2 "killall gdbserver"
-echo "[RaspberryPiRC-DEBUG] start scp EXE to Target ..."
-scp build/RaspberryPiRC $1@$2:/usr/bin
-scp APMconfig.json $1@$2:/etc
-echo "[RaspberryPiRC-DEBUG] lanuch RaspberryPiRC Directly ..."
-ssh $1@$2 "/usr/bin/gdbserver :9590 /usr/bin/RaspberryPiRC $3"
+rm .vscode/connect-ok
+
+$5 ssh $1@$2 "killall gdbserver"
+echo "[$3-DEBUG] start scp EXE to Target ..."
+$5 scp build/$3 $1@$2:/usr/bin
+$5 $6
+echo "[$3-DEBUG] lanuch $3 Directly ..."
+touch .vscode/connect-ok
+$5 ssh $1@$2 "/usr/bin/gdbserver :9590 /usr/bin/$3 $4"

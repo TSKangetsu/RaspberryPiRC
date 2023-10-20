@@ -127,6 +127,64 @@ namespace CRSFTelemetry
         std::copy(flightMode, flightMode + strlen(flightMode) + 1, frame.payload);
         return frame;
     }
+
+    /*
+    0x02 GPS
+    Payload:
+    int32_t     Latitude ( degree / 10`000`000 )
+    int32_t     Longitude (degree / 10`000`000 )
+    uint16_t    Groundspeed ( km/h / 10 )
+    uint16_t    GPS heading ( degree / 100 )
+    uint16_t      Altitude ( meter ­1000m offset )
+    uint8_t     Satellites in use ( counter )
+    */
+    inline crsfProtocol::crsfFrameDef_t crsfFrameGps(uint8_t address,
+                                                     int32_t Latitude,
+                                                     int32_t Longitude,
+                                                     uint16_t Groundspeed,
+                                                     uint16_t GPSHeading,
+                                                     uint16_t Altitude,
+                                                     uint8_t SatellitesCount)
+    {
+        crsfProtocol::crsfFrameDef_t frame;
+
+        frame.deviceAddress = address;
+        frame.frameLength =
+            crsfProtocol::CRSF_FRAME_GPS_PAYLOAD_SIZE;
+        frame.type = crsfProtocol::CRSF_FRAMETYPE_GPS;
+
+        frame.payload[0] = (uint8_t)(Latitude >> 24);
+        frame.payload[1] = (uint8_t)(Latitude >> 16);
+        frame.payload[2] = (uint8_t)(Latitude >> 8);
+        frame.payload[3] = (uint8_t)(Latitude >> 0);
+
+        frame.payload[4] = (uint8_t)(Longitude >> 24);
+        frame.payload[5] = (uint8_t)(Longitude >> 16);
+        frame.payload[6] = (uint8_t)(Longitude >> 8);
+        frame.payload[7] = (uint8_t)(Longitude >> 0);
+
+        frame.payload[8] = (uint8_t)(Groundspeed >> 8);
+        frame.payload[9] = (uint8_t)(Groundspeed >> 0);
+
+        frame.payload[10] = (uint8_t)(GPSHeading >> 8);
+        frame.payload[11] = (uint8_t)(GPSHeading >> 0);
+
+        frame.payload[12] = (uint8_t)(Altitude >> 8);
+        frame.payload[13] = (uint8_t)(Altitude >> 0);
+
+        frame.payload[14] = (uint8_t)(SatellitesCount >> 0);
+
+        return frame;
+    }
+
+    /*
+    0x07 Vario sensor
+    Payload:
+    int16      Vertical speed ( cm/s )
+    */
+    inline void crsfFrameVarioSensor(uint8_t address)
+    {
+    }
 };
 
 class CRSF
