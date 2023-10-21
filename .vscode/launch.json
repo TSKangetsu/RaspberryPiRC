@@ -18,7 +18,7 @@
             "MIMode": "gdb",
             "miDebuggerServerAddress": "${config:custom.ipaddress}:${config:custom.gdbserverPort}",
             "miDebuggerPath": "${workspaceRoot}/.vscode/gdb.sh",
-            "miDebuggerArgs": "${config:custom.gdb}",
+            "miDebuggerArgs": "${config:custom.gdb} ${workspaceRoot} ${config:custom.proxyext}",
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",

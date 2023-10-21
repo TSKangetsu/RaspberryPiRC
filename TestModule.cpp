@@ -260,6 +260,7 @@ int main(int argc, char *argv[])
             long int timee;
             CRSF test(optarg);
             int channelData[50];
+            int st = 300;
             //
             std::thread telethread =
                 std::thread(
@@ -279,9 +280,14 @@ int main(int argc, char *argv[])
 
                             test.CRSFTelemtry(CRSFTelemetry::crsfFrameFlightMode(crsfProtocol::CRSF_SYNC_BYTE, "HELO"));
 
+                            test.CRSFTelemtry(
+                                CRSFTelemetry::crsfFrameVarioSensor(
+                                    crsfProtocol::CRSF_SYNC_BYTE, -20));
+
+                            // FIXME: GPSheading should be unsign,but telemetry is sign, so..
                             test.CRSFTelemtry(CRSFTelemetry::crsfFrameGps(
                                 crsfProtocol::CRSF_SYNC_BYTE,
-                                0, 0, 10, 200, 1005, 8));
+                                100, -100, 10, 32800, 1005, 8));
 
                             usleep(200 * 1000);
                         }

@@ -5,6 +5,6 @@
     "custom.gdb": "aarch64-openwrt-linux-gdb",
     "custom.exe": "RaspberryPiRC",
     "custom.exeargs": "-R /dev/ttyS2",
-    "custom.proxyext": "proxychains -q",
+    "custom.proxyext": "proxychains -f /etc/proxychains4_dev1.conf -q",
     "custom.extenalcmd": "",
 }
