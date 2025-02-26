@@ -166,7 +166,7 @@ int main(int argc, char *argv[])
             calibration[5] = 5000;
             int flip[3] = {0, 0, 0};
             GPSI2CCompass mycompassTest(optarg, 0x0d, COMPASS_QMC5883L, flip);
-            mycompassTest.CompassCaliInit();
+            // mycompassTest.CompassCaliInit();
 
             while (true)
             {
@@ -198,7 +198,7 @@ int main(int argc, char *argv[])
             double angleUnfix = 0;
             int flip[3] = {0, 0, 0};
             GPSI2CCompass mycompassTest(optarg, 0x0d, COMPASS_QMC5883L, flip);
-            mycompassTest.CompassApply(1537, 1106, 2597, 2268, 1488, 1090);
+            mycompassTest.CompassApply(1683, -1405, 1541, -1193, 1570, -1524);
             while (true)
             {
                 mycompassTest.CompassGetRaw(rawx, rawy, rawz);
@@ -207,6 +207,8 @@ int main(int argc, char *argv[])
                 std::cout << "X:" << std::setw(7) << std::setfill(' ') << rawx << " "
                           << "Y:" << std::setw(7) << std::setfill(' ') << rawy << " "
                           << "Z:" << std::setw(7) << std::setfill(' ') << rawz << " \n";
+                if (signalIn == SIGINT)
+                    break;
                 usleep(50 * 1000);
             }
         }

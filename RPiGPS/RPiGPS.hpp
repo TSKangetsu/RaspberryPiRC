@@ -332,6 +332,10 @@ private:
         }
         databuff[Count] = data;
         databuff[Count + 1] = ";";
+        if (!data.empty())
+        {
+            std::cout << "Data is: " << data << std::endl;
+        }
         return Count;
     }
 };
@@ -355,6 +359,13 @@ private:
 #define QMC5883_OP_HRESET 0x01
 #define QMC5883_OP_RESET 0x80
 #define QMC5883_OP_200HZ 0x1d
+
+#define QMC5883_REG_PRODUCTID 0x0D
+#define QMC5883_REG_CTRL1 0x09
+#define QMC5883_CMD_MODE_CON 0x01
+#define QMC5883_CMD_ODR_200HZ 0x0C
+#define QMC5883_CMD_RNG_8G 0x10
+#define QMC5883_CMD_OSR_512 0x00
 
 enum CompassType
 {
@@ -380,14 +391,23 @@ public:
         case COMPASS_QMC5883L:
         {
             {
-                uint8_t wdata[2] = {QMC5883_REG_RESET, QMC5883_OP_RESET};
+                uint8_t wdata[2] = {QMC5883_REG_HRESET, QMC5883_OP_HRESET};
                 if (write(CompassFD, &wdata, 2) < 0)
                     throw std::invalid_argument("[I2C] init compass error");
             }
             //
             usleep(1000);
             {
-                uint8_t wdata[2] = {QMC5883_REG_MODE, QMC5883_OP_200HZ};
+                uint8_t wdata[1] = {QMC5883_REG_PRODUCTID};
+                uint8_t rdata[1] = {0};
+                write(CompassFD, &wdata, 1);
+                read(CompassFD, &rdata, 1);
+                if (static_cast<int>(rdata[0]) != 255)
+                    throw std::invalid_argument("[i2c] init QMC5883 error");
+            }
+            usleep(1000);
+            {
+                uint8_t wdata[2] = {QMC5883_REG_MODE, QMC5883_CMD_MODE_CON | QMC5883_CMD_ODR_200HZ | QMC5883_CMD_RNG_8G | QMC5883_CMD_OSR_512};
                 if (write(CompassFD, &wdata, 2) < 0)
                     throw std::invalid_argument("[I2C] init compass error");
             }
@@ -407,7 +427,6 @@ public:
                 if (write(CompassFD, &wdata, 2) < 0)
                     throw std::invalid_argument("[I2C] init compass error");
             }
-
             {
                 uint8_t wdata[2] = {HMC5883_REG_MODE, 0x00};
                 if (write(CompassFD, &wdata, 2) < 0)
@@ -568,7 +587,7 @@ private:
                 {
                     int Tmp_MX = (short)(cdata[1] << 8 | cdata[0]);
                     int Tmp_MY = (short)(cdata[3] << 8 | cdata[2]);
-                    int Tmp_MZ = (short)(cdata[5] << 8 | cdata[4]) * -1; // Revert as HMC5883L
+                    int Tmp_MZ = (short)(cdata[5] << 8 | cdata[4]) * 1; // Revert as HMC5883L
 
                     int Tmp_M2X = Tmp_MX * cos(DEG2RAD((flipConfig[2]))) + Tmp_MY * sin(DEG2RAD((flipConfig[2])));
                     int Tmp_M2Y = Tmp_MY * cos(DEG2RAD((flipConfig[2]))) + Tmp_MX * sin(DEG2RAD((180 + flipConfig[2])));
@@ -579,6 +598,7 @@ private:
                     RawMAGY = Tmp_M2Y * cos(DEG2RAD((flipConfig[1]))) + Tmp_M3Z * sin(DEG2RAD((180 + flipConfig[1])));
                     RawMAGZ = Tmp_M3Z * cos(DEG2RAD((flipConfig[1]))) + Tmp_M2Y * sin(DEG2RAD((flipConfig[1])));
                     RawMAGX = Tmp_M3X;
+    
                 }
             }
             else
