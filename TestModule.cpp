@@ -97,55 +97,11 @@ int main(int argc, char *argv[])
 
         case 'g':
         {
-            long int time;
-            long int timee;
-            std::string GPSData;
-            std::string dataP[10];
-            GPSUart myUart(optarg);
-            myUart.GPSReOpen();
-            while (true)
-            {
-                if (myUart.GPSCheckDataAvaliable())
-                {
-                    long int timees = GetTimestamp() - TimestartUpLoad;
-                    std::cout << "\nlast frame time Get : " << timees - time << "\n";
-                    myUart.GPSRead(GPSData);
-                    std::cout << GPSData;
-                    time = GetTimestamp() - TimestartUpLoad;
-                }
-                usleep(180000);
-            }
         }
         break;
 
         case 'G':
         {
-            long int time;
-            long int timee;
-            std::string GPSData;
-            GPSUartData mydata;
-            GPSUart *myUart = new GPSUart(optarg);
-            myUart->GPSReOpen();
-            while (true)
-            {
-                time = GetTimestamp() - TimestartUpLoad;
-                mydata = myUart->GPSParse();
-                std::cout << "satillites: " << mydata.satillitesCount << " ";
-                std::cout << "DataError: " << mydata.DataUnCorrect << " ";
-                std::cout << "lat: " << std::setprecision(9) << mydata.lat << " ";
-                std::cout << "lng: " << std::setprecision(10) << mydata.lng << " \n";
-                std::cout << "ALT: " << std::setprecision(4) << mydata.GPSAlititude << "M "
-                          << "HDOP " << std::setprecision(4) << mydata.HDOP << " "
-                          << "Quailty: " << mydata.GPSQuality << " "
-                          << "GeoidalSP: " << mydata.GPSGeoidalSP << "\n";
-                long int timees = GetTimestamp() - TimestartUpLoad;
-                std::cout << "last frame time : " << timees - time << "\n";
-                timee = GetTimestamp() - TimestartUpLoad;
-                if ((timee - time) > 200000)
-                    usleep(1500);
-                else
-                    usleep(200000 - (timee - time));
-            }
         }
         break;
 
@@ -164,9 +120,9 @@ int main(int argc, char *argv[])
             calibration[1] = 5000;
             calibration[3] = 5000;
             calibration[5] = 5000;
-            int flip[3] = {0, 0, 0};
+            int flip[3] = {0, 12, 0};
             GPSI2CCompass mycompassTest(optarg, 0x0d, COMPASS_QMC5883L, flip);
-            mycompassTest.CompassCaliInit();
+            // mycompassTest.CompassCaliInit();
 
             while (true)
             {
@@ -196,9 +152,9 @@ int main(int argc, char *argv[])
             int rawy = 0;
             int rawz = 0;
             double angleUnfix = 0;
-            int flip[3] = {0, 0, 0};
+            int flip[3] = {0, 12, 0};
             GPSI2CCompass mycompassTest(optarg, 0x0d, COMPASS_QMC5883L, flip);
-            mycompassTest.CompassApply(1537, 1106, 2597, 2268, 1488, 1090);
+            mycompassTest.CompassApply(3966, 647, 3517, 298, 573, -2574);
             while (true)
             {
                 mycompassTest.CompassGetRaw(rawx, rawy, rawz);
@@ -207,6 +163,8 @@ int main(int argc, char *argv[])
                 std::cout << "X:" << std::setw(7) << std::setfill(' ') << rawx << " "
                           << "Y:" << std::setw(7) << std::setfill(' ') << rawy << " "
                           << "Z:" << std::setw(7) << std::setfill(' ') << rawz << " \n";
+                if (signalIn == SIGINT)
+                    break;
                 usleep(50 * 1000);
             }
         }

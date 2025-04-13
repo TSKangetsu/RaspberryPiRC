@@ -69,23 +69,35 @@ public:
     inline GPSUart(const char *UartDevice)
     {
         GPSDevice = UartDevice;
-        GPSUart_fd = open(UartDevice, O_RDWR | O_NOCTTY | O_NDELAY);
+        GPSUart_fd = open(UartDevice, O_RDWR | O_NOCTTY | O_SYNC);
 
         // TODO: better expection expected
         if (GPSUart_fd == -1)
             throw std::invalid_argument("[UART] GPS Unable to open device:" + std::string(UartDevice));
 
-        struct termios2 options;
+        fcntl(GPSUart_fd, F_SETFL, 0);
 
+        struct termios2 options;
         if (0 != ioctl(GPSUart_fd, TCGETS2, &options))
         {
             close(GPSUart_fd);
             GPSUart_fd = -1;
         }
-        options.c_cflag = B9600 | CS8 | CLOCAL | CREAD;
-        options.c_iflag = 0;
-        options.c_oflag = 0;
-        options.c_lflag = 0;
+
+        options.c_cflag &= ~CBAUD;
+        options.c_cflag |= BOTHER;
+        options.c_ispeed = 115200;
+        options.c_ospeed = 115200;
+        options.c_cflag &= ~PARENB;
+        options.c_cflag &= ~CSTOPB;
+        options.c_cflag &= ~CSIZE;
+        options.c_cflag |= CS8;
+        options.c_cflag &= ~CRTSCTS;
+        options.c_cflag |= CREAD | CLOCAL;
+        options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+        options.c_iflag &= ~(IXON | IXOFF | IXANY);
+        options.c_oflag &= ~OPOST;
+
         if (0 != ioctl(GPSUart_fd, TCSETS2, &options))
         {
             close(GPSUart_fd);
@@ -119,173 +131,22 @@ public:
 
     inline void GPSReOpen()
     {
-        if (GPSUart_fd != -1)
-        {
-            close(GPSUart_fd);
-            GPSUart_fd = -1;
-        }
-        GPSUart_fd = open(GPSDevice.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);
-        if (GPSUart_fd == -1)
-            std::invalid_argument("[UART] GPS115DeviceError");
-        struct termios2 options_57;
-
-        if (0 != ioctl(GPSUart_fd, TCGETS2, &options_57))
-        {
-            close(GPSUart_fd);
-            GPSUart_fd = -1;
-        }
-        options_57.c_cflag = B115200 | CS8 | CLOCAL | CREAD;
-        options_57.c_iflag = IGNPAR;
-        options_57.c_oflag = 0;
-        options_57.c_lflag = 0;
-        if (0 != ioctl(GPSUart_fd, TCSETS2, &options_57))
-        {
-            close(GPSUart_fd);
-            GPSUart_fd = -1;
-        }
-        tcflush(GPSUart_fd, TCIOFLUSH);
-        GPSPeeker = fdopen(GPSUart_fd, "r");
     }
 
     inline bool GPSCheckDataAvaliable()
     {
-        int c[6];
-        char GNRMC[6];
-        int bytes_avaiable;
-        ioctl(GPSUart_fd, FIONREAD, &bytes_avaiable);
-        if (bytes_avaiable > 30)
-        {
-            for (size_t i = 0; i < 6; i++)
-            {
-                c[i] = fgetc(GPSPeeker);
-                GNRMC[i] = (char)c[i];
-            }
-            for (size_t i = 0; i < 6; i++)
-            {
-                ungetc(c[i], GPSPeeker);
-            }
-            if (strncmp(GNRMC, "$GNRMC", 6) == 0 || strncmp(GNRMC, "CMRNG$", 6) == 0)
-            {
-                return true;
-            }
-            else
-            {
-                GPSReOpen();
-                return false;
-            }
-        }
-        else
-        {
-            return false;
-        }
     }
 
     inline int GPSRead(std::string &outputData)
     {
-        outputData = "";
-        if (GPSUart_fd == -1)
-            return -1;
-        FD_ZERO(&fd_Maker);
-        FD_SET(GPSUart_fd, &fd_Maker);
-        //================================================$GNRMC
-        if (GPSCheckDataAvaliable())
-        {
-            int bytes_avaiable;
-            ioctl(GPSUart_fd, FIONREAD, &bytes_avaiable);
-            //================================================
-            char TmpData[bytes_avaiable];
-            int InputFrame;
-            InputFrame = read(GPSUart_fd, &TmpData, bytes_avaiable);
-            if (InputFrame > 0)
-            {
-                for (size_t i = 0; i < InputFrame; i++)
-                {
-                    outputData += TmpData[i];
-                }
-            }
-            tcflush(GPSUart_fd, TCIOFLUSH);
-            return InputFrame;
-        }
-        return -1;
     }
 
-    inline GPSUartData GPSParse()
-    {
-        int DataCount = 0;
-        int GGADataCrash = 0;
-        GPSUartData myData;
-        myData.DataUnCorrect = false;
-        std::string GPSDataStr;
-        std::string GPSDataStrError;
-        std::string GPSData[255];
-        std::string GPSDataSub[40];
-        std::string GPSTmpData[2];
-        std::string GPSDataChecker[5];
+    inline GPSUartData GPSParse() {
 
-        GPSRead(GPSDataStr);
-        DataCount = dataParese(GPSDataStr, GPSData, "\r\n", 255);
-
-        int Count = 0;
-        while (GPSData[Count] != std::string(";"))
-        {
-            // step 1: search GNGGA data
-            if (strncmp("$GNGGA", GPSData[Count].c_str(), 5) == 0)
-            {
-                GGADataCrash++;
-                if (GGADataCrash > 1)
-                {
-                    break;
-                }
-                // step 2: Check CRC data is correct
-                dataParese(GPSData[Count], GPSDataChecker, '*', 5);
-                // TODO: CRC check
-                if (GPSDataChecker[1] == std::string(""))
-                {
-                    myData.DataUnCorrect = true;
-                }
-                // step 3: get lat
-                dataParese(GPSData[Count], GPSDataSub, ',', 40);
-                std::string GPSDataTmpLat = std::to_string(std::atof(GPSDataSub[GGAData_LAT].c_str()) / 100.0);
-                dataParese(GPSDataTmpLat, GPSTmpData, '.', 2);
-                myData.lat = std::atof(GPSTmpData[0].c_str()) * 10000.0;
-                myData.lat += std::atof(GPSTmpData[1].c_str()) / 60.0;
-                myData.lat = (int)(myData.lat * 100);
-                // step 4: get lng
-                std::string GPSDataTmpLng = std::to_string(std::atof(GPSDataSub[GGAData_LNG].c_str()) / 100.0);
-                dataParese(GPSDataTmpLng, GPSTmpData, '.', 2);
-                myData.lng = std::atof(GPSTmpData[0].c_str()) * 10000.0;
-                myData.lng += std::atof(GPSTmpData[1].c_str()) / 60.0;
-                myData.lng = (int)(myData.lng * 100);
-                // step 5: get North of lat
-                if (strncmp(GPSDataSub[GGAData_North].c_str(), "N", 1) == 0)
-                    myData.lat_North_Mode = true;
-                else
-                    myData.lat_North_Mode = false;
-                // step 6: get East of lng
-                if (strncmp(GPSDataSub[GGAData_East].c_str(), "E", 1) == 0)
-                    myData.lat_East_Mode = true;
-                else
-                    myData.lat_East_Mode = false;
-                // step ...parse other ...
-                myData.GPSQuality = std::atof(GPSDataSub[GGAData_Quality].c_str());
-                myData.satillitesCount = std::atof(GPSDataSub[GGAData_SATNUM].c_str());
-                myData.HDOP = std::atof(GPSDataSub[GGAData_HDOP].c_str());
-                myData.GPSAlititude = std::atof(GPSDataSub[GGAData_Altitude].c_str());
-                myData.GPSGeoidalSP = std::atof(GPSDataSub[GGAData_GeoidalSP].c_str());
-            }
-            else if (strncmp("$GNGLL", GPSData[Count].c_str(), 5) == 0)
-            {
-                dataParese(GPSData[Count], GPSDataSub, ',', 40);
-            }
-            Count++;
-            GPSLastDebug = GPSDataStr;
-        }
-        return myData;
     };
 
     inline ~GPSUart()
     {
-        close(GPSUart_fd);
     }
 
 private:
@@ -301,39 +162,6 @@ private:
     int lose_frameCount;
     fd_set fd_Maker;
     FILE *GPSPeeker;
-
-    void dataParese(std::string data, std::string *databuff, const char splti, int MaxSize)
-    {
-        std::istringstream f(data);
-        std::string s;
-        int count = 0;
-        while (getline(f, s, splti))
-        {
-            if (count > MaxSize)
-                break;
-            databuff[count] = s;
-            count++;
-        }
-    }
-
-    int dataParese(std::string data, std::string *databuff, std::string splti, int MaxSize)
-    {
-        int Count = 0;
-        size_t pos = 0;
-        std::string token;
-        while ((pos = data.find(splti)) != std::string::npos)
-        {
-            if (Count > MaxSize)
-                break;
-            token = data.substr(0, pos);
-            databuff[Count] = token;
-            data.erase(0, pos + splti.length());
-            Count++;
-        }
-        databuff[Count] = data;
-        databuff[Count + 1] = ";";
-        return Count;
-    }
 };
 
 #define COMPASS_FLIP_X 0
@@ -355,6 +183,13 @@ private:
 #define QMC5883_OP_HRESET 0x01
 #define QMC5883_OP_RESET 0x80
 #define QMC5883_OP_200HZ 0x1d
+
+#define QMC5883_REG_PRODUCTID 0x0D
+#define QMC5883_REG_CTRL1 0x09
+#define QMC5883_CMD_MODE_CON 0x01
+#define QMC5883_CMD_ODR_200HZ 0x0C
+#define QMC5883_CMD_RNG_8G 0x10
+#define QMC5883_CMD_OSR_512 0x00
 
 enum CompassType
 {
@@ -380,14 +215,23 @@ public:
         case COMPASS_QMC5883L:
         {
             {
-                uint8_t wdata[2] = {QMC5883_REG_RESET, QMC5883_OP_RESET};
+                uint8_t wdata[2] = {QMC5883_REG_HRESET, QMC5883_OP_HRESET};
                 if (write(CompassFD, &wdata, 2) < 0)
                     throw std::invalid_argument("[I2C] init compass error");
             }
             //
             usleep(1000);
             {
-                uint8_t wdata[2] = {QMC5883_REG_MODE, QMC5883_OP_200HZ};
+                uint8_t wdata[1] = {QMC5883_REG_PRODUCTID};
+                uint8_t rdata[1] = {0};
+                write(CompassFD, &wdata, 1);
+                read(CompassFD, &rdata, 1);
+                if (static_cast<int>(rdata[0]) != 255)
+                    throw std::invalid_argument("[i2c] init QMC5883 error");
+            }
+            usleep(1000);
+            {
+                uint8_t wdata[2] = {QMC5883_REG_MODE, QMC5883_CMD_MODE_CON | QMC5883_CMD_ODR_200HZ | QMC5883_CMD_RNG_8G | QMC5883_CMD_OSR_512};
                 if (write(CompassFD, &wdata, 2) < 0)
                     throw std::invalid_argument("[I2C] init compass error");
             }
@@ -407,7 +251,6 @@ public:
                 if (write(CompassFD, &wdata, 2) < 0)
                     throw std::invalid_argument("[I2C] init compass error");
             }
-
             {
                 uint8_t wdata[2] = {HMC5883_REG_MODE, 0x00};
                 if (write(CompassFD, &wdata, 2) < 0)
@@ -568,7 +411,7 @@ private:
                 {
                     int Tmp_MX = (short)(cdata[1] << 8 | cdata[0]);
                     int Tmp_MY = (short)(cdata[3] << 8 | cdata[2]);
-                    int Tmp_MZ = (short)(cdata[5] << 8 | cdata[4]) * -1; // Revert as HMC5883L
+                    int Tmp_MZ = (short)(cdata[5] << 8 | cdata[4]) * 1; // Revert as HMC5883L
 
                     int Tmp_M2X = Tmp_MX * cos(DEG2RAD((flipConfig[2]))) + Tmp_MY * sin(DEG2RAD((flipConfig[2])));
                     int Tmp_M2Y = Tmp_MY * cos(DEG2RAD((flipConfig[2]))) + Tmp_MX * sin(DEG2RAD((180 + flipConfig[2])));
@@ -579,7 +422,7 @@ private:
                     RawMAGY = Tmp_M2Y * cos(DEG2RAD((flipConfig[1]))) + Tmp_M3Z * sin(DEG2RAD((180 + flipConfig[1])));
                     RawMAGZ = Tmp_M3Z * cos(DEG2RAD((flipConfig[1]))) + Tmp_M2Y * sin(DEG2RAD((flipConfig[1])));
                     RawMAGX = Tmp_M3X;
-                }
+                    }
             }
             else
             {
