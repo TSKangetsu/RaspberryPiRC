@@ -97,6 +97,18 @@ int main(int argc, char *argv[])
 
         case 'g':
         {
+            long int time;
+            long int timee;
+            std::string GPSData;
+            GPSUart myUart(optarg);
+            while (true)
+            {
+                long int timees = GetTimestamp() - TimestartUpLoad;
+                myUart.GPSRead(GPSData);
+                std::cout << "Data received: " << GPSData << std::endl;
+                time = GetTimestamp() - TimestartUpLoad;
+                usleep(100000);
+            }
         }
         break;
 

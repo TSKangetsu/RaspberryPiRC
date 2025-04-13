@@ -69,7 +69,7 @@ public:
     inline GPSUart(const char *UartDevice)
     {
         GPSDevice = UartDevice;
-        GPSUart_fd = open(UartDevice, O_RDWR | O_NOCTTY | O_SYNC);
+        GPSUart_fd = open(UartDevice, O_RDWR | O_NOCTTY | O_NDELAY);
 
         // TODO: better expection expected
         if (GPSUart_fd == -1)
@@ -83,50 +83,30 @@ public:
             close(GPSUart_fd);
             GPSUart_fd = -1;
         }
-
         options.c_cflag &= ~CBAUD;
         options.c_cflag |= BOTHER;
         options.c_ispeed = 115200;
         options.c_ospeed = 115200;
+        options.c_cflag = (options.c_cflag & ~CSIZE) | CS8;
+        options.c_cflag |= CLOCAL | CREAD;
         options.c_cflag &= ~PARENB;
         options.c_cflag &= ~CSTOPB;
-        options.c_cflag &= ~CSIZE;
-        options.c_cflag |= CS8;
         options.c_cflag &= ~CRTSCTS;
-        options.c_cflag |= CREAD | CLOCAL;
-        options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+        options.c_lflag &= ~ICANON;
+        options.c_lflag &= ~ECHO;
+        options.c_lflag &= ~ECHOE;
+        options.c_lflag &= ~ISIG;
         options.c_iflag &= ~(IXON | IXOFF | IXANY);
+        options.c_iflag &= ~(ICRNL | INLCR);
         options.c_oflag &= ~OPOST;
+        options.c_cc[VMIN] = 0;
+        options.c_cc[VTIME] = 10;
 
         if (0 != ioctl(GPSUart_fd, TCSETS2, &options))
         {
             close(GPSUart_fd);
             GPSUart_fd = -1;
         }
-
-        if (write(GPSUart_fd, GPSDisableGPGSVConfig, sizeof(GPSDisableGPGSVConfig)) == -1)
-            throw std::invalid_argument("[UART] GPSWriteConfigError");
-        else
-        {
-            tcdrain(GPSUart_fd);
-            tcflush(GPSUart_fd, TCOFLUSH);
-            if (write(GPSUart_fd, GPS5HzConfig, sizeof(GPS5HzConfig)) == -1)
-                throw std::invalid_argument("[UART] GPSWriteConfig5HZError");
-            else
-            {
-                tcdrain(GPSUart_fd);
-                tcflush(GPSUart_fd, TCOFLUSH);
-                if (write(GPSUart_fd, Set_to_115kbps, sizeof(Set_to_115kbps)) == -1)
-                    throw std::invalid_argument("[UART] GPSWriteConfig115Error");
-                else
-                {
-                    tcdrain(GPSUart_fd);
-                    tcflush(GPSUart_fd, TCOFLUSH);
-                    close(GPSUart_fd);
-                    GPSUart_fd = -1;
-                }
-            }
-        };
     }
 
     inline void GPSReOpen()
@@ -139,6 +119,24 @@ public:
 
     inline int GPSRead(std::string &outputData)
     {
+        const int maxRetries = 5;
+        int retries = 0;
+        int bytes_avaiable = 0;
+        ioctl(GPSUart_fd, FIONREAD, &bytes_avaiable);
+
+        if (bytes_avaiable > 0)
+        {
+            char TmpData[bytes_avaiable];
+            int ReadCount = read(GPSUart_fd, TmpData, bytes_avaiable);
+
+            if (ReadCount > 0)
+            {
+                for (size_t i = 0; i < ReadCount; i++)
+                {
+                    outputData += TmpData[i];
+                }
+            }
+        }
     }
 
     inline GPSUartData GPSParse() {
@@ -147,6 +145,7 @@ public:
 
     inline ~GPSUart()
     {
+        close(GPSUart_fd);
     }
 
 private:
@@ -155,10 +154,6 @@ private:
     bool GNRMCComfirm = false;
     std::string GPSDevice;
     std::string GPSLastDebug;
-    uint8_t GPSDisableGPGSVConfig[11] = {0xB5, 0x62, 0x06, 0x01, 0x03, 0x00, 0xF0, 0x03, 0x00, 0xFD, 0x15};
-    uint8_t GPS5HzConfig[14] = {0xB5, 0x62, 0x06, 0x08, 0x06, 0x00, 0xC8, 0x00, 0x01, 0x00, 0x01, 0x00, 0xDE, 0x6A};
-    uint8_t Set_to_115kbps[28] = {0xB5, 0x62, 0x06, 0x00, 0x14, 0x00, 0x01, 0x00, 0x00, 0x00, 0xD0, 0x28, 0x00, 0x00,
-                                  0x00, 0xC2, 0x01, 0x00, 0x03, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0xDC, 0x3E};
     int lose_frameCount;
     fd_set fd_Maker;
     FILE *GPSPeeker;
@@ -422,7 +417,7 @@ private:
                     RawMAGY = Tmp_M2Y * cos(DEG2RAD((flipConfig[1]))) + Tmp_M3Z * sin(DEG2RAD((180 + flipConfig[1])));
                     RawMAGZ = Tmp_M3Z * cos(DEG2RAD((flipConfig[1]))) + Tmp_M2Y * sin(DEG2RAD((flipConfig[1])));
                     RawMAGX = Tmp_M3X;
-                    }
+                }
             }
             else
             {
