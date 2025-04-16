@@ -113,16 +113,42 @@ int main(int argc, char *argv[])
             while (true)
             {
                 long int timees = GetTimestamp() - TimestartUpLoad;
+                std::cout << "\nlast frame time Get : " << timees - time << "\n";
                 myUart.GPSRead(GPSData);
-                std::cout << "Data received: " << GPSData << std::endl;
+                std::cout <<std::endl<< GPSData << std::endl;
                 time = GetTimestamp() - TimestartUpLoad;
-                usleep(10000);
+                usleep(200000);
             }
         }
         break;
 
         case 'G':
         {
+            long int time;
+            long int timee;
+            int baudrate = 115200;
+            baudrate = configSettle("./GPSConfig.json", "baudrate");
+            std::string GPSData;
+            GPSUartData mydata;
+            std::cout << "the initial baudarte: " << baudrate << std::endl;
+            GPSUart myUart(optarg, baudrate);
+            myUart.GPSReOpen();
+            myUart.GPSkDataAvaliable();
+            while (true)
+            {
+                long int timees = GetTimestamp() - TimestartUpLoad;
+                mydata = myUart.GPSParse();
+                std::cout << "satillites: " << mydata.satillitesCount << " ";
+                std::cout << "DataError: " << mydata.DataUnCorrect << " ";
+                std::cout << "lat: " << std::setprecision(9) << mydata.lat << " ";
+                std::cout << "lng: " << std::setprecision(10) << mydata.lng << " \n";
+                std::cout << "ALT: " << std::setprecision(4) << mydata.GPSAlititude << "M "
+                          << "HDOP " << std::setprecision(4) << mydata.HDOP << " "
+                          << "Quailty: " << mydata.GPSQuality << " "
+                          << "GeoidalSP: " << mydata.GPSGeoidalSP << "\n";
+                time = GetTimestamp() - TimestartUpLoad;
+                usleep(200000);
+            }
         }
         break;
 

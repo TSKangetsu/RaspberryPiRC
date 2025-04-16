@@ -133,22 +133,23 @@ public:
                         std::cout << "GPS find" << "\r\n";
                         break;
                     }
-                    else
-                    {
-                        if (currentBaudRateIndex < baudRates.size())
-                        {
-                            setBaudRate(baudRates[currentBaudRateIndex]);
-                            std::cout << "Switching to baud rate: " << baudRates[currentBaudRateIndex] << "\r\n";
-                            currentBaudRateIndex++;
-                        }
-                        else
-                        {
-                            throw std::invalid_argument("[UART] GPS not found the right baud rate");
-                        }
-                    }
                 }
             }
-            usleep(200000);
+            if (currentBaudRateIndex < baudRates.size())
+                {
+                    setBaudRate(baudRates[currentBaudRateIndex]);
+                    std::cout << "Switching to baud rate: " << baudRates[currentBaudRateIndex] << "\r\n";
+                    currentBaudRateIndex++;
+            }
+            else
+            {
+                currentBaudRateIndex = 0;
+                errorcount++;
+            }
+            if (errorcount > 5)
+                throw std::invalid_argument("[UART] GPS not found the right baud rate");
+
+            usleep(1000000);
         }
     }
 
@@ -192,7 +193,76 @@ public:
     }
 
     inline GPSUartData GPSParse() {
+        int DataCount = 0;
+        int GGADataCrash = 0;
+        GPSUartData myData;
+        myData.DataUnCorrect = false;
+        std::string GPSDataStr;
+        std::string GPSDataStrError;
+        std::string GPSData[255];
+        std::string GPSDataSub[40];
+        std::string GPSTmpData[2];
+        std::string GPSDataChecker[5];
 
+        GPSRead(GPSDataStr);
+        DataCount = dataParese(GPSDataStr, GPSData, "\r\n", 255);
+
+        int Count = 0;
+        while (GPSData[Count] != std::string(";"))
+        {
+            // step 1: search GNGGA data
+            if (strncmp("$GNGGA", GPSData[Count].c_str(), 5) == 0)
+            {
+                GGADataCrash++;
+                if (GGADataCrash > 1)
+                {
+                    break;
+                }
+                // step 2: Check CRC data is correct
+                dataParese(GPSData[Count], GPSDataChecker, '*', 5);
+                // TODO: CRC check
+                if (GPSDataChecker[1] == std::string(""))
+                {
+                    myData.DataUnCorrect = true;
+                }
+                // step 3: get lat
+                dataParese(GPSData[Count], GPSDataSub, ',', 40);
+                std::string GPSDataTmpLat = std::to_string(std::atof(GPSDataSub[GGAData_LAT].c_str()) / 100.0);
+                dataParese(GPSDataTmpLat, GPSTmpData, '.', 2);
+                myData.lat = std::atof(GPSTmpData[0].c_str()) * 10000.0;
+                myData.lat += std::atof(GPSTmpData[1].c_str()) / 60.0;
+                myData.lat = (int)(myData.lat * 100);
+                // step 4: get lng
+                std::string GPSDataTmpLng = std::to_string(std::atof(GPSDataSub[GGAData_LNG].c_str()) / 100.0);
+                dataParese(GPSDataTmpLng, GPSTmpData, '.', 2);
+                myData.lng = std::atof(GPSTmpData[0].c_str()) * 10000.0;
+                myData.lng += std::atof(GPSTmpData[1].c_str()) / 60.0;
+                myData.lng = (int)(myData.lng * 100);
+                // step 5: get North of lat
+                if (strncmp(GPSDataSub[GGAData_North].c_str(), "N", 1) == 0)
+                    myData.lat_North_Mode = true;
+                else
+                    myData.lat_North_Mode = false;
+                // step 6: get East of lng
+                if (strncmp(GPSDataSub[GGAData_East].c_str(), "E", 1) == 0)
+                    myData.lat_East_Mode = true;
+                else
+                    myData.lat_East_Mode = false;
+                // step ...parse other ...
+                myData.GPSQuality = std::atof(GPSDataSub[GGAData_Quality].c_str());
+                myData.satillitesCount = std::atof(GPSDataSub[GGAData_SATNUM].c_str());
+                myData.HDOP = std::atof(GPSDataSub[GGAData_HDOP].c_str());
+                myData.GPSAlititude = std::atof(GPSDataSub[GGAData_Altitude].c_str());
+                myData.GPSGeoidalSP = std::atof(GPSDataSub[GGAData_GeoidalSP].c_str());
+            }
+            else if (strncmp("$GNGLL", GPSData[Count].c_str(), 5) == 0)
+            {
+                dataParese(GPSData[Count], GPSDataSub, ',', 40);
+            }
+            Count++;
+            GPSLastDebug = GPSDataStr;
+        }
+        return myData;
     };
 
     inline void setBaudRate(int baudRate)
@@ -229,6 +299,41 @@ private:
     uint8_t GPSDisableGPGSVConfig[11] = {0xB5, 0x62, 0x06, 0x01, 0x03, 0x00, 0xF0, 0x03, 0x00, 0xFD, 0x15};
     size_t currentBaudRateIndex = 0;
     std::string GPSDevice;
+    int errorcount = 0;
+    std::string GPSLastDebug;
+    
+        void dataParese(std::string data, std::string *databuff, const char splti, int MaxSize)
+    {
+        std::istringstream f(data);
+        std::string s;
+        int count = 0;
+        while (getline(f, s, splti))
+        {
+            if (count > MaxSize)
+                break;
+            databuff[count] = s;
+            count++;
+        }
+    }
+
+    int dataParese(std::string data, std::string *databuff, std::string splti, int MaxSize)
+    {
+        int Count = 0;
+        size_t pos = 0;
+        std::string token;
+        while ((pos = data.find(splti)) != std::string::npos)
+        {
+            if (Count > MaxSize)
+                break;
+            token = data.substr(0, pos);
+            databuff[Count] = token;
+            data.erase(0, pos + splti.length());
+            Count++;
+        }
+        databuff[Count] = data;
+        databuff[Count + 1] = ";";
+        return Count;
+    }
 };
 
 #define COMPASS_FLIP_X 0
