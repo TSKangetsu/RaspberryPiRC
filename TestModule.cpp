@@ -9,9 +9,13 @@
 #include "RPiIBus/RPiIBus.hpp"
 #include "RPiFlow/RPiFlow.hpp"
 #include "CRSF/CRSFUartRC.hpp"
+#include "Drive_Json.hpp"
+#include <fstream>
 
 int signalIn = 0;
 int TimestartUpLoad = 0;
+
+double configSettle(const char *configDir, const char *Target);
 
 int GetTimestamp()
 {
@@ -99,15 +103,20 @@ int main(int argc, char *argv[])
         {
             long int time;
             long int timee;
+            int baudrate = 115200;
+            baudrate = configSettle("./GPSConfig.json", "baudrate");
             std::string GPSData;
-            GPSUart myUart(optarg);
+            std::cout << "the initial baudarte: " << baudrate << std::endl;
+            GPSUart myUart(optarg, baudrate);
+            myUart.GPSReOpen();
+            myUart.GPSkDataAvaliable();
             while (true)
             {
                 long int timees = GetTimestamp() - TimestartUpLoad;
                 myUart.GPSRead(GPSData);
                 std::cout << "Data received: " << GPSData << std::endl;
                 time = GetTimestamp() - TimestartUpLoad;
-                usleep(100000);
+                usleep(10000);
             }
         }
         break;
@@ -291,4 +300,13 @@ int main(int argc, char *argv[])
         break;
         }
     }
+}
+
+double configSettle(const char *configDir, const char *Target)
+{
+    std::ifstream config(configDir);
+    std::string content((std::istreambuf_iterator<char>(config)),
+                        (std::istreambuf_iterator<char>()));
+    nlohmann::json Configdata = nlohmann::json::parse(content);
+    return Configdata[Target].get<double>();
 }

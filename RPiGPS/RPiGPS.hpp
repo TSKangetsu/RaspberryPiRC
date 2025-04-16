@@ -20,6 +20,7 @@
 #include <asm/termbits.h>
 #undef termios
 #include <termios.h>
+#include <vector>
 #define PI 3.1415926
 #define QMC5883LADDR 0x0D
 #define HMC5883LADDR 0x1E
@@ -66,7 +67,7 @@ struct GPSUartData
 class GPSUart
 {
 public:
-    inline GPSUart(const char *UartDevice)
+    inline GPSUart(const char *UartDevice, int baudRate)
     {
         GPSDevice = UartDevice;
         GPSUart_fd = open(UartDevice, O_RDWR | O_NOCTTY | O_NDELAY);
@@ -85,8 +86,8 @@ public:
         }
         options.c_cflag &= ~CBAUD;
         options.c_cflag |= BOTHER;
-        options.c_ispeed = 115200;
-        options.c_ospeed = 115200;
+        options.c_ispeed = baudRate;
+        options.c_ospeed = baudRate;
         options.c_cflag = (options.c_cflag & ~CSIZE) | CS8;
         options.c_cflag |= CLOCAL | CREAD;
         options.c_cflag &= ~PARENB;
@@ -111,19 +112,68 @@ public:
 
     inline void GPSReOpen()
     {
+        while (true)
+        {
+            std::string outputData;
+            int bytes_avaiable = 0;
+            ioctl(GPSUart_fd, FIONREAD, &bytes_avaiable);
+            std::cout << "GPS finding bytes_avaiable" << bytes_avaiable << "\r\n";
+            if (bytes_avaiable > 0)
+            {
+                char TmpData[bytes_avaiable];
+                int ReadCount = read(GPSUart_fd, TmpData, bytes_avaiable);
+                if (ReadCount > 0)
+                {
+                    for (size_t i = 0; i < ReadCount; i++)
+                    {
+                        outputData += TmpData[i];
+                    }
+                    if (outputData.find("$GNGSA") != std::string::npos)
+                    {
+                        std::cout << "GPS find" << "\r\n";
+                        break;
+                    }
+                    else
+                    {
+                        if (currentBaudRateIndex < baudRates.size())
+                        {
+                            setBaudRate(baudRates[currentBaudRateIndex]);
+                            std::cout << "Switching to baud rate: " << baudRates[currentBaudRateIndex] << "\r\n";
+                            currentBaudRateIndex++;
+                        }
+                        else
+                        {
+                            throw std::invalid_argument("[UART] GPS not found the right baud rate");
+                        }
+                    }
+                }
+            }
+            usleep(200000);
+        }
     }
 
-    inline bool GPSCheckDataAvaliable()
+    inline void GPSkDataAvaliable()
     {
+        if (write(GPSUart_fd, GPSDisableGPGSVConfig, sizeof(GPSDisableGPGSVConfig)) == -1)
+            throw std::invalid_argument("[UART] GPSWriteConfigError");
+        else
+        {
+            tcdrain(GPSUart_fd);
+            tcflush(GPSUart_fd, TCOFLUSH);
+            if (write(GPSUart_fd, GPS5HzConfig, sizeof(GPS5HzConfig)) == -1)
+                throw std::invalid_argument("[UART] GPSWriteConfig5HZError");
+            else
+            {
+                tcdrain(GPSUart_fd);
+                tcflush(GPSUart_fd, TCOFLUSH);
+            }
+        };
     }
 
     inline int GPSRead(std::string &outputData)
     {
-        const int maxRetries = 5;
-        int retries = 0;
         int bytes_avaiable = 0;
         ioctl(GPSUart_fd, FIONREAD, &bytes_avaiable);
-
         if (bytes_avaiable > 0)
         {
             char TmpData[bytes_avaiable];
@@ -136,12 +186,35 @@ public:
                     outputData += TmpData[i];
                 }
             }
+            return ReadCount;
         }
+        return -1;
     }
 
     inline GPSUartData GPSParse() {
 
     };
+
+    inline void setBaudRate(int baudRate)
+    {
+        struct termios2 options;
+        if (0 != ioctl(GPSUart_fd, TCGETS2, &options))
+        {
+            close(GPSUart_fd);
+            GPSUart_fd = -1;
+        }
+
+        options.c_cflag &= ~CBAUD;
+        options.c_cflag |= BOTHER;
+        options.c_ispeed = baudRate;
+        options.c_ospeed = baudRate;
+
+        if (0 != ioctl(GPSUart_fd, TCSETS2, &options))
+        {
+            close(GPSUart_fd);
+            GPSUart_fd = -1;
+        }
+    }
 
     inline ~GPSUart()
     {
@@ -150,13 +223,12 @@ public:
 
 private:
     int GPSUart_fd;
-    char GPSSingleData;
-    bool GNRMCComfirm = false;
+    std::vector<int> baudRates = {9600, 14400, 19200, 38400, 57600, 115200, 230400, 460800, 921600};
+    uint8_t GPS5HzConfig[14] = {0xB5, 0x62, 0x06, 0x08, 0x06, 0x00, 0xC8, 0x00, 0x01, 0x00, 0x01, 0x00, 0xDE, 0x6A};
+    uint8_t GPS10HzConfig[14] = {0xB5, 0x62, 0x06, 0x08, 0x06, 0x00, 0x64, 0x00, 0x01, 0x00, 0x01, 0x00, 0x7A, 0x12};
+    uint8_t GPSDisableGPGSVConfig[11] = {0xB5, 0x62, 0x06, 0x01, 0x03, 0x00, 0xF0, 0x03, 0x00, 0xFD, 0x15};
+    size_t currentBaudRateIndex = 0;
     std::string GPSDevice;
-    std::string GPSLastDebug;
-    int lose_frameCount;
-    fd_set fd_Maker;
-    FILE *GPSPeeker;
 };
 
 #define COMPASS_FLIP_X 0
