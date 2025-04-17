@@ -196,7 +196,7 @@ public:
         int DataCount = 0;
         int GGADataCrash = 0;
         GPSUartData myData;
-        myData.DataUnCorrect = false;
+        myData.DataUnCorrect = true;
         std::string GPSDataStr;
         std::string GPSDataStrError;
         std::string GPSData[255];
@@ -219,12 +219,14 @@ public:
                     break;
                 }
                 // step 2: Check CRC data is correct
-                dataParese(GPSData[Count], GPSDataChecker, '*', 5);
-                // TODO: CRC check
-                if (GPSDataChecker[1] == std::string(""))
-                {
+                    // std::cout << "GPSData[" <<GPSData[Count].c_str() << std::endl;
+
+                if( !NMEA_CheckSum(GPSData[Count]) )
+                    myData.DataUnCorrect = false;
+                else
                     myData.DataUnCorrect = true;
-                }
+                // std::cout << "myData.DataUnCorrect [" <<myData.DataUnCorrect << std::endl;
+
                 // step 3: get lat
                 dataParese(GPSData[Count], GPSDataSub, ',', 40);
                 std::string GPSDataTmpLat = std::to_string(std::atof(GPSDataSub[GGAData_LAT].c_str()) / 100.0);
@@ -293,7 +295,7 @@ public:
 
 private:
     int GPSUart_fd;
-    std::vector<int> baudRates = {9600, 14400, 19200, 38400, 57600, 115200, 230400, 460800, 921600};
+    std::vector<int> baudRates = {460800,921600,9600, 14400, 19200, 38400, 57600, 115200, 230400};
     uint8_t GPS5HzConfig[14] = {0xB5, 0x62, 0x06, 0x08, 0x06, 0x00, 0xC8, 0x00, 0x01, 0x00, 0x01, 0x00, 0xDE, 0x6A};
     uint8_t GPS10HzConfig[14] = {0xB5, 0x62, 0x06, 0x08, 0x06, 0x00, 0x64, 0x00, 0x01, 0x00, 0x01, 0x00, 0x7A, 0x12};
     uint8_t GPSDisableGPGSVConfig[11] = {0xB5, 0x62, 0x06, 0x01, 0x03, 0x00, 0xF0, 0x03, 0x00, 0xFD, 0x15};
@@ -334,6 +336,39 @@ private:
         databuff[Count + 1] = ";";
         return Count;
     }
+
+    unsigned char AsciiToHex(char *str, unsigned char size, unsigned char *result)
+{
+	unsigned char temp;
+
+	for(*result = 0; size; size--, str++)
+	{
+		if(('9' >= *str) && (*str >='0') ) temp = *str - '0';
+		else if(('F' >= *str) && (*str >='A') ) temp = *str - 'A' + 10;
+		else if(('f' >= *str) && (*str >='a') ) temp = *str - 'a' + 10;
+		else return 1; 
+		*result |= temp<<((size-1)*4);
+	}
+	
+	return 0; 
+}
+
+unsigned char NMEA_CheckSum(std::string buf)
+{
+	unsigned char i;
+	unsigned char chk, result;
+
+	for(chk=buf[1], i=2; (buf[i]!='*')&&(i<255); i++)
+	{
+		chk ^= buf[i];
+	}
+	
+	if( AsciiToHex(&buf[i+1], 2, &result) ) return 3; 
+    if(i>=255) return 2; 
+	if(chk != result) return 1; 
+	
+	return 0; 
+}
 };
 
 #define COMPASS_FLIP_X 0
