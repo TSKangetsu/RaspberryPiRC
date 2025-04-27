@@ -206,6 +206,9 @@ class CRSF
 public:
     inline CRSF(const char *UartDevice, int bandrate = CRSF_DEFAULT_BANDRATE)
     {
+        lose_frameCount = 0;
+        InputBuffer = 0;
+        rcChannelsFrame = {1000};
         dataBuffer = new uint8_t[CRSF_MAX_READ_SIZE];
         //
         CRSFUart_fd = open(UartDevice, O_RDWR | O_CLOEXEC | O_NONBLOCK);
@@ -282,33 +285,37 @@ public:
         const crsfProtocol::crsfFrame_t *hdr = (crsfProtocol::crsfFrame_t *)data;
         if (hdr->frame.deviceAddress == crsfProtocol::CRSF_ADDRESS_FLIGHT_CONTROLLER)
         {
-            uint8_t crc = gencrc((uint8_t *)(hdr->frame.payload), hdr->frame.frameLength - 2, hdr->frame.type);
-            // std::cout << std::dec << "framesize: " << (int)hdr->frame.frameLength
-            //           << std::hex << " check crc: 0x" << (int)crc
-            //           << " == 0x" << (int)hdr->frame.payload[hdr->frame.frameLength - 2]
-            //           << std::dec << "\n";
-            // for (size_t i = 0; i < hdr->frame.frameLength; i++)
-            // {
-            //     std::cout << std::setw(2) << std::setfill('0')
-            //               << std::hex << (int)hdr->frame.payload[i] << std::dec << " ";
-            // }
-            // std::cout << '\n';
-
-            if (crc == hdr->frame.payload[hdr->frame.frameLength - 2])
+            // FIXME: tardiction problem
+            if (hdr->frame.frameLength < crsfProtocol::CRSF_FRAME_SIZE_MAX)
             {
-                // std::cout << "device addr: " << std::hex << (int)hdr->frame.deviceAddress << std::dec << "\n";
-                //
-                switch (hdr->frame.type)
+                uint8_t crc = gencrc((uint8_t *)(hdr->frame.payload), hdr->frame.frameLength - 2, hdr->frame.type);
+                // std::cout << std::dec << "framesize: " << (int)hdr->frame.frameLength
+                //           << std::hex << " check crc: 0x" << (int)crc
+                //           << " == 0x" << (int)hdr->frame.payload[hdr->frame.frameLength - 2]
+                //           << std::dec << "\n";
+                // for (size_t i = 0; i < hdr->frame.frameLength; i++)
+                // {
+                //     std::cout << std::setw(2) << std::setfill('0')
+                //               << std::hex << (int)hdr->frame.payload[i] << std::dec << " ";
+                // }
+                // std::cout << '\n';
+
+                if (crc == hdr->frame.payload[hdr->frame.frameLength - 2])
                 {
-                case crsfProtocol::CRSF_FRAMETYPE_GPS:
-                    // packetGps(hdr);
-                    return crsfProtocol::CRSF_FRAMETYPE_GPS;
-                case crsfProtocol::CRSF_FRAMETYPE_RC_CHANNELS_PACKED:
-                    packetChannelsPacked(hdr, channelsOut);
-                    return crsfProtocol::CRSF_FRAMETYPE_RC_CHANNELS_PACKED;
-                case crsfProtocol::CRSF_FRAMETYPE_LINK_STATISTICS:
-                    // packetLinkStatistics(hdr);
-                    return crsfProtocol::CRSF_FRAMETYPE_LINK_STATISTICS;
+                    // std::cout << "device addr: " << std::hex << (int)hdr->frame.deviceAddress << std::dec << "\n";
+                    //
+                    switch (hdr->frame.type)
+                    {
+                    case crsfProtocol::CRSF_FRAMETYPE_GPS:
+                        // packetGps(hdr);
+                        return crsfProtocol::CRSF_FRAMETYPE_GPS;
+                    case crsfProtocol::CRSF_FRAMETYPE_RC_CHANNELS_PACKED:
+                        packetChannelsPacked(hdr, channelsOut);
+                        return crsfProtocol::CRSF_FRAMETYPE_RC_CHANNELS_PACKED;
+                    case crsfProtocol::CRSF_FRAMETYPE_LINK_STATISTICS:
+                        // packetLinkStatistics(hdr);
+                        return crsfProtocol::CRSF_FRAMETYPE_LINK_STATISTICS;
+                    }
                 }
             }
         } //
