@@ -78,53 +78,56 @@ public:
         {
             MSPV2 *mspData = (MSPV2 *)inputData.get();
             MSPV2_CRC *mspDataCRC = (MSPV2_CRC *)inputData.get();
-            // TODO: check CRC
-            uint8_t crcget = gencrc(mspDataCRC->data, mspData->payloadSize + MSPV2_CRC_EXTEND);
-            // std::cout << "[UART] check msp crc:" << std::hex
-            //           << (int)crcget
-            //           << " "
-            //           << (int)mspData->payload[mspData->payloadSize]
-            //           << std::dec << "\n";
-
-            // std::cout << "[UART] check msp data: "
-            //           << mspData->header << " "
-            //           << mspData->version << " "
-            //           << mspData->type << " "
-            //           << std::hex
-            //           << (int)mspData->flag << " "
-            //           << (int)mspData->function << " "
-            //           << (int)mspData->payloadSize << " "
-            //           << std::dec
-            //           << "\n";
-
-            if (crcget == mspData->payload[mspData->payloadSize])
+            // length size alway cause problem
+            if ((mspData->payloadSize + MSPV2_CRC_EXTEND) < sizeof(mspDataCRC->data))
             {
-                // std::cout << "[UART] check MSP raw: " << std::hex;
-                // for (size_t i = 0; i < mspData->payloadSize; i++)
-                // {
-                //     std::cout << (int)mspData->payload[i] << " ";
-                // }
-                // std::cout << std::dec << '\n';
+                uint8_t crcget = gencrc(mspDataCRC->data, mspData->payloadSize + MSPV2_CRC_EXTEND);
+                // std::cout << "[UART] check msp crc:" << std::hex
+                //           << (int)crcget
+                //           << " "
+                //           << (int)mspData->payload[mspData->payloadSize]
+                //           << std::dec << "\n";
 
-                if (mspData->header == '$' && mspData->version == 'X' && mspData->type == '<')
+                // std::cout << "[UART] check msp data: "
+                //           << mspData->header << " "
+                //           << mspData->version << " "
+                //           << mspData->type << " "
+                //           << std::hex
+                //           << (int)mspData->flag << " "
+                //           << (int)mspData->function << " "
+                //           << (int)mspData->payloadSize << " "
+                //           << std::dec
+                //           << "\n";
+
+                if (crcget == mspData->payload[mspData->payloadSize])
                 {
-                    if (mspData->function == MSP2_SENSOR_RANGEFINDER)
+                    // std::cout << "[UART] check MSP raw: " << std::hex;
+                    // for (size_t i = 0; i < mspData->payloadSize; i++)
+                    // {
+                    //     std::cout << (int)mspData->payload[i] << " ";
+                    // }
+                    // std::cout << std::dec << '\n';
+
+                    if (mspData->header == '$' && mspData->version == 'X' && mspData->type == '<')
                     {
-                        mspSensorRangefinderDataMessage_t *rfdata =
-                            (mspSensorRangefinderDataMessage_t *)mspData->payload;
-                        AltitudeMm = rfdata->distanceMm;
-                        RFQuality = rfdata->quality;
-                        return 1;
-                    }
-                    //
-                    if (mspData->function == MSP2_SENSOR_OPTIC_FLOW)
-                    {
-                        mspSensorOpflowDataMessage_t *opdata =
-                            (mspSensorOpflowDataMessage_t *)mspData->payload;
-                        XOutput = opdata->motionX;
-                        YOutput = opdata->motionY;
-                        OPQuality = opdata->quality;
-                        return 2;
+                        if (mspData->function == MSP2_SENSOR_RANGEFINDER)
+                        {
+                            mspSensorRangefinderDataMessage_t *rfdata =
+                                (mspSensorRangefinderDataMessage_t *)mspData->payload;
+                            AltitudeMm = rfdata->distanceMm;
+                            RFQuality = rfdata->quality;
+                            return 1;
+                        }
+                        //
+                        if (mspData->function == MSP2_SENSOR_OPTIC_FLOW)
+                        {
+                            mspSensorOpflowDataMessage_t *opdata =
+                                (mspSensorOpflowDataMessage_t *)mspData->payload;
+                            XOutput = opdata->motionX;
+                            YOutput = opdata->motionY;
+                            OPQuality = opdata->quality;
+                            return 2;
+                        }
                     }
                 }
             }
