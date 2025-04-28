@@ -136,10 +136,10 @@ public:
                 }
             }
             if (currentBaudRateIndex < baudRates.size())
-                {
-                    setBaudRate(baudRates[currentBaudRateIndex]);
-                    std::cout << "Switching to baud rate: " << baudRates[currentBaudRateIndex] << "\r\n";
-                    currentBaudRateIndex++;
+            {
+                setBaudRate(baudRates[currentBaudRateIndex]);
+                std::cout << "Switching to baud rate: " << baudRates[currentBaudRateIndex] << "\r\n";
+                currentBaudRateIndex++;
             }
             else
             {
@@ -192,7 +192,8 @@ public:
         return -1;
     }
 
-    inline GPSUartData GPSParse() {
+    inline GPSUartData GPSParse()
+    {
         int DataCount = 0;
         int GGADataCrash = 0;
         GPSUartData myData;
@@ -210,59 +211,64 @@ public:
         int Count = 0;
         while (GPSData[Count] != std::string(";"))
         {
-            // step 1: search GNGGA data
-            if (strncmp("$GNGGA", GPSData[Count].c_str(), 5) == 0)
+            if (Count < (sizeof(GPSData) / sizeof(GPSData[0])))
             {
-                GGADataCrash++;
-                if (GGADataCrash > 1)
+                // step 1: search GNGGA data
+                if (strncmp("$GNGGA", GPSData[Count].c_str(), 5) == 0)
                 {
-                    break;
-                }
-                // step 2: Check CRC data is correct
+                    GGADataCrash++;
+                    if (GGADataCrash > 1)
+                    {
+                        break;
+                    }
+                    // step 2: Check CRC data is correct
                     // std::cout << "GPSData[" <<GPSData[Count].c_str() << std::endl;
 
-                if( !NMEA_CheckSum(GPSData[Count]) )
-                    myData.DataUnCorrect = false;
-                else
-                    myData.DataUnCorrect = true;
-                // std::cout << "myData.DataUnCorrect [" <<myData.DataUnCorrect << std::endl;
+                    if (!NMEA_CheckSum(GPSData[Count]))
+                        myData.DataUnCorrect = false;
+                    else
+                        myData.DataUnCorrect = true;
+                    // std::cout << "myData.DataUnCorrect [" <<myData.DataUnCorrect << std::endl;
 
-                // step 3: get lat
-                dataParese(GPSData[Count], GPSDataSub, ',', 40);
-                std::string GPSDataTmpLat = std::to_string(std::atof(GPSDataSub[GGAData_LAT].c_str()) / 100.0);
-                dataParese(GPSDataTmpLat, GPSTmpData, '.', 2);
-                myData.lat = std::atof(GPSTmpData[0].c_str()) * 10000.0;
-                myData.lat += std::atof(GPSTmpData[1].c_str()) / 60.0;
-                myData.lat = (int)(myData.lat * 100);
-                // step 4: get lng
-                std::string GPSDataTmpLng = std::to_string(std::atof(GPSDataSub[GGAData_LNG].c_str()) / 100.0);
-                dataParese(GPSDataTmpLng, GPSTmpData, '.', 2);
-                myData.lng = std::atof(GPSTmpData[0].c_str()) * 10000.0;
-                myData.lng += std::atof(GPSTmpData[1].c_str()) / 60.0;
-                myData.lng = (int)(myData.lng * 100);
-                // step 5: get North of lat
-                if (strncmp(GPSDataSub[GGAData_North].c_str(), "N", 1) == 0)
-                    myData.lat_North_Mode = true;
-                else
-                    myData.lat_North_Mode = false;
-                // step 6: get East of lng
-                if (strncmp(GPSDataSub[GGAData_East].c_str(), "E", 1) == 0)
-                    myData.lat_East_Mode = true;
-                else
-                    myData.lat_East_Mode = false;
-                // step ...parse other ...
-                myData.GPSQuality = std::atof(GPSDataSub[GGAData_Quality].c_str());
-                myData.satillitesCount = std::atof(GPSDataSub[GGAData_SATNUM].c_str());
-                myData.HDOP = std::atof(GPSDataSub[GGAData_HDOP].c_str());
-                myData.GPSAlititude = std::atof(GPSDataSub[GGAData_Altitude].c_str());
-                myData.GPSGeoidalSP = std::atof(GPSDataSub[GGAData_GeoidalSP].c_str());
+                    // step 3: get lat
+                    dataParese(GPSData[Count], GPSDataSub, ',', 40);
+                    std::string GPSDataTmpLat = std::to_string(std::atof(GPSDataSub[GGAData_LAT].c_str()) / 100.0);
+                    dataParese(GPSDataTmpLat, GPSTmpData, '.', 2);
+                    myData.lat = std::atof(GPSTmpData[0].c_str()) * 10000.0;
+                    myData.lat += std::atof(GPSTmpData[1].c_str()) / 60.0;
+                    myData.lat = (int)(myData.lat * 100);
+                    // step 4: get lng
+                    std::string GPSDataTmpLng = std::to_string(std::atof(GPSDataSub[GGAData_LNG].c_str()) / 100.0);
+                    dataParese(GPSDataTmpLng, GPSTmpData, '.', 2);
+                    myData.lng = std::atof(GPSTmpData[0].c_str()) * 10000.0;
+                    myData.lng += std::atof(GPSTmpData[1].c_str()) / 60.0;
+                    myData.lng = (int)(myData.lng * 100);
+                    // step 5: get North of lat
+                    if (strncmp(GPSDataSub[GGAData_North].c_str(), "N", 1) == 0)
+                        myData.lat_North_Mode = true;
+                    else
+                        myData.lat_North_Mode = false;
+                    // step 6: get East of lng
+                    if (strncmp(GPSDataSub[GGAData_East].c_str(), "E", 1) == 0)
+                        myData.lat_East_Mode = true;
+                    else
+                        myData.lat_East_Mode = false;
+                    // step ...parse other ...
+                    myData.GPSQuality = std::atof(GPSDataSub[GGAData_Quality].c_str());
+                    myData.satillitesCount = std::atof(GPSDataSub[GGAData_SATNUM].c_str());
+                    myData.HDOP = std::atof(GPSDataSub[GGAData_HDOP].c_str());
+                    myData.GPSAlititude = std::atof(GPSDataSub[GGAData_Altitude].c_str());
+                    myData.GPSGeoidalSP = std::atof(GPSDataSub[GGAData_GeoidalSP].c_str());
+                }
+                else if (strncmp("$GNGLL", GPSData[Count].c_str(), 5) == 0)
+                {
+                    dataParese(GPSData[Count], GPSDataSub, ',', 40);
+                }
+                Count++;
+                GPSLastDebug = GPSDataStr;
             }
-            else if (strncmp("$GNGLL", GPSData[Count].c_str(), 5) == 0)
-            {
-                dataParese(GPSData[Count], GPSDataSub, ',', 40);
-            }
-            Count++;
-            GPSLastDebug = GPSDataStr;
+            else
+                break;
         }
         return myData;
     };
@@ -295,7 +301,7 @@ public:
 
 private:
     int GPSUart_fd;
-    std::vector<int> baudRates = {460800,921600,9600, 14400, 19200, 38400, 57600, 115200, 230400};
+    std::vector<int> baudRates = {460800, 921600, 9600, 14400, 19200, 38400, 57600, 115200, 230400};
     uint8_t GPS5HzConfig[14] = {0xB5, 0x62, 0x06, 0x08, 0x06, 0x00, 0xC8, 0x00, 0x01, 0x00, 0x01, 0x00, 0xDE, 0x6A};
     uint8_t GPS10HzConfig[14] = {0xB5, 0x62, 0x06, 0x08, 0x06, 0x00, 0x64, 0x00, 0x01, 0x00, 0x01, 0x00, 0x7A, 0x12};
     uint8_t GPSDisableGPGSVConfig[11] = {0xB5, 0x62, 0x06, 0x01, 0x03, 0x00, 0xF0, 0x03, 0x00, 0xFD, 0x15};
@@ -303,8 +309,8 @@ private:
     std::string GPSDevice;
     int errorcount = 0;
     std::string GPSLastDebug;
-    
-        void dataParese(std::string data, std::string *databuff, const char splti, int MaxSize)
+
+    void dataParese(std::string data, std::string *databuff, const char splti, int MaxSize)
     {
         std::istringstream f(data);
         std::string s;
@@ -338,37 +344,44 @@ private:
     }
 
     unsigned char AsciiToHex(char *str, unsigned char size, unsigned char *result)
-{
-	unsigned char temp;
+    {
+        unsigned char temp;
 
-	for(*result = 0; size; size--, str++)
-	{
-		if(('9' >= *str) && (*str >='0') ) temp = *str - '0';
-		else if(('F' >= *str) && (*str >='A') ) temp = *str - 'A' + 10;
-		else if(('f' >= *str) && (*str >='a') ) temp = *str - 'a' + 10;
-		else return 1; 
-		*result |= temp<<((size-1)*4);
-	}
-	
-	return 0; 
-}
+        for (*result = 0; size; size--, str++)
+        {
+            if (('9' >= *str) && (*str >= '0'))
+                temp = *str - '0';
+            else if (('F' >= *str) && (*str >= 'A'))
+                temp = *str - 'A' + 10;
+            else if (('f' >= *str) && (*str >= 'a'))
+                temp = *str - 'a' + 10;
+            else
+                return 1;
+            *result |= temp << ((size - 1) * 4);
+        }
 
-unsigned char NMEA_CheckSum(std::string buf)
-{
-	unsigned char i;
-	unsigned char chk, result;
+        return 0;
+    }
 
-	for(chk=buf[1], i=2; (buf[i]!='*')&&(i<255); i++)
-	{
-		chk ^= buf[i];
-	}
-	
-	if( AsciiToHex(&buf[i+1], 2, &result) ) return 3; 
-    if(i>=255) return 2; 
-	if(chk != result) return 1; 
-	
-	return 0; 
-}
+    unsigned char NMEA_CheckSum(std::string buf)
+    {
+        unsigned char i;
+        unsigned char chk, result;
+
+        for (chk = buf[1], i = 2; (buf[i] != '*') && (i < 255); i++)
+        {
+            chk ^= buf[i];
+        }
+
+        if (AsciiToHex(&buf[i + 1], 2, &result))
+            return 3;
+        if (i >= 255)
+            return 2;
+        if (chk != result)
+            return 1;
+
+        return 0;
+    }
 };
 
 #define COMPASS_FLIP_X 0

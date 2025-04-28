@@ -286,7 +286,7 @@ public:
         if (hdr->frame.deviceAddress == crsfProtocol::CRSF_ADDRESS_FLIGHT_CONTROLLER)
         {
             // FIXME: tardiction problem
-            if (hdr->frame.frameLength < sizeof(hdr->frame.payload))
+            if (hdr->frame.frameLength < (sizeof(hdr->frame.payload) / sizeof(hdr->frame.payload[0])))
             {
                 uint8_t crc = gencrc((uint8_t *)(hdr->frame.payload), hdr->frame.frameLength - 2, hdr->frame.type);
                 // std::cout << std::dec << "framesize: " << (int)hdr->frame.frameLength

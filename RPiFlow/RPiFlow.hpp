@@ -79,7 +79,7 @@ public:
             MSPV2 *mspData = (MSPV2 *)inputData.get();
             MSPV2_CRC *mspDataCRC = (MSPV2_CRC *)inputData.get();
             // length size alway cause problem
-            if ((mspData->payloadSize + MSPV2_CRC_EXTEND) < sizeof(mspDataCRC->data))
+            if ((mspData->payloadSize + MSPV2_CRC_EXTEND) < (sizeof(mspDataCRC->data) / sizeof(mspDataCRC->data[0])))
             {
                 uint8_t crcget = gencrc(mspDataCRC->data, mspData->payloadSize + MSPV2_CRC_EXTEND);
                 // std::cout << "[UART] check msp crc:" << std::hex
