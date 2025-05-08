@@ -48,18 +48,18 @@
 
 struct GPSUartData
 {
-    double lat = 0;
+    int lat = 0;
     bool lat_North_Mode;
-    double lng = 0;
+    int lng = 0;
     bool lat_East_Mode;
 
     int GPSQuality = 0;
 
     int satillitesCount = 0;
-    double HDOP = 0;
+    int HDOP = 0;
 
-    double GPSAlititude = 0;
-    double GPSGeoidalSP = 0;
+    int GPSAlititude = 0;
+    int GPSGeoidalSP = 0;
     //
     bool DataUnCorrect;
 };
