@@ -234,15 +234,13 @@ public:
                     dataParese(GPSData[Count], GPSDataSub, ',', 40);
                     std::string GPSDataTmpLat = std::to_string(std::atof(GPSDataSub[GGAData_LAT].c_str()) / 100.0);
                     dataParese(GPSDataTmpLat, GPSTmpData, '.', 2);
-                    myData.lat = std::atof(GPSTmpData[0].c_str()) * 10000.0;
-                    myData.lat += std::atof(GPSTmpData[1].c_str()) / 60.0;
-                    myData.lat = (int)(myData.lat * 100);
+                    myData.lat = std::atof(GPSTmpData[0].c_str()) * 1000000;
+                    myData.lat += std::atof(GPSTmpData[1].c_str()) / 0.6;
                     // step 4: get lng
                     std::string GPSDataTmpLng = std::to_string(std::atof(GPSDataSub[GGAData_LNG].c_str()) / 100.0);
                     dataParese(GPSDataTmpLng, GPSTmpData, '.', 2);
-                    myData.lng = std::atof(GPSTmpData[0].c_str()) * 10000.0;
-                    myData.lng += std::atof(GPSTmpData[1].c_str()) / 60.0;
-                    myData.lng = (int)(myData.lng * 100);
+                    myData.lng = std::atof(GPSTmpData[0].c_str()) * 1000000;
+                    myData.lng += std::atof(GPSTmpData[1].c_str()) / 0.6;
                     // step 5: get North of lat
                     if (strncmp(GPSDataSub[GGAData_North].c_str(), "N", 1) == 0)
                         myData.lat_North_Mode = true;
@@ -426,7 +424,7 @@ public:
         if (ioctl(CompassFD, I2C_SLAVE, i2caddr) < 0)
             std::invalid_argument("[I2C] COMPASS Unable to open device:" + std::string(i2cDevice));
         if (ioctl(CompassFD, I2C_TIMEOUT, 0x01) < 0) // set to 10ms?
-            throw -1;
+            throw - 1;
 
         CompassType = Compass_Type;
         //
@@ -566,7 +564,7 @@ public:
 
     void CompassGetUnfixAngle(double &UnFixAngle)
     {
-        UnFixAngle = atan2((float)RawMAGCY, (float)-1 * RawMAGCX) * 180.f / PI;
+        UnFixAngle = atan2((float)RawMAGCY, (float) -1 * RawMAGCX) * 180.f / PI;
         if (UnFixAngle < 0)
             UnFixAngle += 360.f;
         else if (UnFixAngle >= 360)
