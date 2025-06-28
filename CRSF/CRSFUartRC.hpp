@@ -280,13 +280,17 @@ public:
         return ret;
     };
 
-    int CRSFParser(uint8_t *data, int size, int channelsOut[15])
+    int CRSFParser(uint8_t *data, int size, int channelsOut[16])
     {
+        if(data == nullptr)
+            return -1;
+        
         const crsfProtocol::crsfFrame_t *hdr = (crsfProtocol::crsfFrame_t *)data;
         if (hdr->frame.deviceAddress == crsfProtocol::CRSF_ADDRESS_FLIGHT_CONTROLLER)
         {
             // FIXME: tardiction problem
-            if (hdr->frame.frameLength < (sizeof(hdr->frame.payload) / sizeof(hdr->frame.payload[0])))
+            if (hdr->frame.frameLength < (sizeof(hdr->frame.payload) / sizeof(hdr->frame.payload[0])) &&
+                hdr->frame.frameLength > 2)
             {
                 uint8_t crc = gencrc((uint8_t *)(hdr->frame.payload), hdr->frame.frameLength - 2, hdr->frame.type);
                 // std::cout << std::dec << "framesize: " << (int)hdr->frame.frameLength
@@ -377,7 +381,7 @@ private:
     //
     crsfProtocol::crsfPayloadRcChannelsPacked_s rcChannelsFrame;
     //
-    void packetChannelsPacked(const crsfProtocol::crsfFrame_t *p, int _channels[15])
+    void packetChannelsPacked(const crsfProtocol::crsfFrame_t *p, int _channels[16])
     {
         crsfProtocol::crsfPayloadRcChannelsPacked_s *ch =
             (crsfProtocol::crsfPayloadRcChannelsPacked_s *)&p->frame.payload;
