@@ -363,18 +363,30 @@ private:
 
     unsigned char NMEA_CheckSum(std::string buf)
     {
-        unsigned char i;
-        unsigned char chk, result;
+        // Validate basic structure
+        if (buf.size() < 4 || buf[0] != '$')
+            return 2;
 
-        for (chk = buf[1], i = 2; (buf[i] != '*') && (i < 255); i++)
+        size_t starPos = buf.find('*');
+        if (starPos == std::string::npos || starPos < 1)
+            return 2;
+
+        // Ensure there are at least two hex digits after '*'
+        if (starPos + 2 >= buf.size())
+            return 2;
+
+        // Compute checksum as XOR of characters between '$' (excluded) and '*' (excluded)
+        unsigned char chk = 0;
+        for (size_t i = 1; i < starPos; ++i)
         {
-            chk ^= buf[i];
+            chk ^= static_cast<unsigned char>(buf[i]);
         }
 
-        if (AsciiToHex(&buf[i + 1], 2, &result))
+        // Parse the checksum from the two hex digits following '*'
+        unsigned char result;
+        if (AsciiToHex(&buf[starPos + 1], 2, &result))
             return 3;
-        if (i >= 255)
-            return 2;
+
         if (chk != result)
             return 1;
 
