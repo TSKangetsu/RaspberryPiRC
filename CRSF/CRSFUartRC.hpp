@@ -190,9 +190,8 @@ namespace CRSFTelemetry
         crsfProtocol::crsfFrameDef_t frame;
 
         frame.deviceAddress = address;
-        frame.frameLength =
-            crsfProtocol::CRSF_FRAMETYPE_VARIO_SENSOR;
-        frame.type = crsfProtocol::CRSF_FRAME_VARIO_SENSOR_PAYLOAD_SIZE;
+        frame.frameLength = crsfProtocol::CRSF_FRAME_VARIO_SENSOR_PAYLOAD_SIZE;
+        frame.type = crsfProtocol::CRSF_FRAMETYPE_VARIO_SENSOR;
 
         frame.payload[0] = (uint8_t)VerticalSpeed >> 8;
         frame.payload[1] = (uint8_t)VerticalSpeed;
@@ -335,7 +334,7 @@ public:
     inline ~CRSF()
     {
         close(CRSFUart_fd);
-        delete dataBuffer;
+        delete[] dataBuffer;
     };
 
     inline int CRSFTelemtry(crsfProtocol::crsfFrameDef_t TelemetryData)
