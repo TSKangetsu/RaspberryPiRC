@@ -108,7 +108,6 @@ int main(int argc, char *argv[])
             std::string GPSData;
             std::cout << "the initial baudarte: " << baudrate << std::endl;
             GPSUart myUart(optarg, baudrate);
-            myUart.GPSReOpen();
             myUart.GPSkDataAvaliable();
             while (true)
             {
@@ -132,7 +131,6 @@ int main(int argc, char *argv[])
             GPSUartData mydata;
             std::cout << "the initial baudarte: " << baudrate << std::endl;
             GPSUart myUart(optarg, baudrate);
-            myUart.GPSReOpen();
             myUart.GPSkDataAvaliable();
             while (true)
             {
