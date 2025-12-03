@@ -134,7 +134,7 @@ public:
         }
         return ret;
     };
-
+    
     inline ~MSPUartFlow()
     {
         inputData.reset();

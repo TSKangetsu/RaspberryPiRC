@@ -112,45 +112,46 @@ public:
 
     inline void GPSReOpen()
     {
-        while (true)
-        {
-            std::string outputData;
-            int bytes_avaiable = 0;
-            ioctl(GPSUart_fd, FIONREAD, &bytes_avaiable);
-            std::cout << "GPS finding bytes_avaiable" << bytes_avaiable << "\r\n";
-            if (bytes_avaiable > 0)
-            {
-                char TmpData[bytes_avaiable];
-                int ReadCount = read(GPSUart_fd, TmpData, bytes_avaiable);
-                if (ReadCount > 0)
-                {
-                    for (size_t i = 0; i < ReadCount; i++)
-                    {
-                        outputData += TmpData[i];
-                    }
-                    if (outputData.find("$GNGSA") != std::string::npos)
-                    {
-                        std::cout << "GPS find" << "\r\n";
-                        break;
-                    }
-                }
-            }
-            if (currentBaudRateIndex < baudRates.size())
-            {
-                setBaudRate(baudRates[currentBaudRateIndex]);
-                std::cout << "Switching to baud rate: " << baudRates[currentBaudRateIndex] << "\r\n";
-                currentBaudRateIndex++;
-            }
-            else
-            {
-                currentBaudRateIndex = 0;
-                errorcount++;
-            }
-            if (errorcount > 5)
-                throw std::invalid_argument("[UART] GPS not found the right baud rate");
+        // while (true)
+        // {
+        //     std::string outputData;
+        //     int bytes_avaiable = 0;
+        //     ioctl(GPSUart_fd, FIONREAD, &bytes_avaiable);
+        //     std::cout << "GPS finding bytes_avaiable" << bytes_avaiable << "\r\n";
+        //     if (bytes_avaiable > 0)
+        //     {
+        //         char TmpData[bytes_avaiable];
+        //         int ReadCount = read(GPSUart_fd, TmpData, bytes_avaiable);
+        //         if (ReadCount > 0)
+        //         {
+        //             for (size_t i = 0; i < ReadCount; i++)
+        //             {
+        //                 outputData += TmpData[i];
+        //             }
+        //             if (outputData.find("$GNGSA") != std::string::npos)
+        //             {
+        //                 std::cout << "GPS find" << "\r\n";
+        //                 break;
+        //             }
+        //         }
+        //     }
+        //     if (currentBaudRateIndex < baudRates.size())
+        //     {
+        //         setBaudRate(baudRates[currentBaudRateIndex]);
+        //         std::cout << "Switching to baud rate: " << baudRates[currentBaudRateIndex] << "\r\n";
+        //         currentBaudRateIndex++;
+        //     }
+        //     else
+        //     {
+        //         currentBaudRateIndex = 0;
+        //         errorcount++;
+        //     }
+        //     if (errorcount > 5)
+        //         throw std::invalid_argument("[UART] GPS not found the right baud rate");
 
-            usleep(1000000);
-        }
+        //     usleep(1000000);
+        // }
+        setBaudRate(115200);
     }
 
     inline void GPSkDataAvaliable()

@@ -13,7 +13,7 @@ struct MSPV2
     uint8_t flag;
     uint16_t function;
     uint16_t payloadSize;
-    uint8_t payload[MSPV2_PAYLOAD_MAX];
+    uint8_t payload[1];
 };
 
 struct MSPV2_CRC
