@@ -249,10 +249,10 @@ int main(int argc, char *argv[])
                 timee = GetTimestamp() - TimestartUpLoad;
                 std::cout << "last frame time : " << timee - time << "\n";
                 time = GetTimestamp() - TimestartUpLoad;
-                if ((timee - time) > 35000)
+                if ((timee - time) > 15000)
                     usleep(50);
                 else
-                    usleep(35000 - (timee - time));
+                    usleep(15000 - (timee - time));
             }
         }
         break;

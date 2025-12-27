@@ -1,6 +1,6 @@
 {
     "custom.user": "root",
-    "custom.ipaddress": "192.168.6.56",
+    "custom.ipaddress": "192.168.222.1",
     "custom.gdbserverPort": "9590",
     "custom.gdb": "aarch64-openwrt-linux-gdb",
     "custom.exe": "RaspberryPiRC",
