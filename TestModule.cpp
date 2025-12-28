@@ -114,7 +114,8 @@ int main(int argc, char *argv[])
                 long int timees = GetTimestamp() - TimestartUpLoad;
                 std::cout << "\nlast frame time Get : " << timees - time << "\n";
                 myUart.GPSRead(GPSData);
-                std::cout <<std::endl<< GPSData << std::endl;
+                std::cout << std::endl
+                          << GPSData << std::endl;
                 time = GetTimestamp() - TimestartUpLoad;
                 usleep(200000);
             }
@@ -217,6 +218,7 @@ int main(int argc, char *argv[])
 
         case 'f':
         {
+            int error = 0;
             long int time;
             long int timee;
             int x;
@@ -241,10 +243,12 @@ int main(int argc, char *argv[])
                     std::cout << "alt:" << alt << " \n";
                     std::cout << "rfquality:" << rfqulity << " \n";
                     std::cout << "Status:" << Status << " \n";
+                    std::cout << "error: " << error << "\n";
                 }
                 else
                 {
                     std::cout << "error frame recv\n";
+                    error++;
                 }
                 timee = GetTimestamp() - TimestartUpLoad;
                 std::cout << "last frame time : " << timee - time << "\n";
