@@ -55,6 +55,13 @@ public:
             throw std::invalid_argument("[UART] FLOW init failed");
         }
 
+        {
+            struct termios options;
+            tcgetattr(MSPUart_fd, &options);
+            tcsetattr(MSPUart_fd, TCSANOW, &options);
+            tcflush(MSPUart_fd, TCIOFLUSH);
+        }
+
         inputData.reset(new uint8_t[MSPV2_PAYLOAD_MAX]);
         inputDataTmp.reset(new uint8_t[MSPV2_PAYLOAD_MAX]);
     };
@@ -151,6 +158,13 @@ public:
                     }
                 }
             }
+        }
+
+        {
+            struct termios options;
+            tcgetattr(MSPUart_fd, &options);
+            tcsetattr(MSPUart_fd, TCSANOW, &options);
+            tcflush(MSPUart_fd, TCIOFLUSH);
         }
         return ret;
     };
