@@ -138,8 +138,7 @@ public:
                                             (mspSensorRangefinderDataMessage_t *)mspData->payload;
                                         AltitudeMm = rfdata->distanceMm;
                                         RFQuality = rfdata->quality;
-                                        // return 1;
-                                        ret++;
+                                        ret |= 1 << 0;
                                     }
                                     //
                                     if (mspData->function == MSP2_SENSOR_OPTIC_FLOW)
@@ -149,8 +148,7 @@ public:
                                         XOutput = opdata->motionX;
                                         YOutput = opdata->motionY;
                                         OPQuality = opdata->quality;
-                                        // return 2;
-                                        ret++;
+                                        ret |= 1 << 1;
                                     }
                                 }
                             }
