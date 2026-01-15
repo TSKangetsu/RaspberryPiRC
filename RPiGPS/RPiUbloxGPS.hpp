@@ -243,8 +243,6 @@ private:
 
     void init()
     {
-        std::cout << "Configuring GPS..." << std::endl;
-
         // 1. Configure Update Rate to 10Hz (100ms)
         configureRate(100);
 
@@ -261,8 +259,6 @@ private:
 
         // 4. Enable UBX NAV-PVT
         configureMsg(UBX_CLASS_NAV, UBX_ID_NAV_PVT, 1);
-
-        std::cout << "GPS Configured." << std::endl;
     }
 
     void sendUBX(uint8_t msgClass, uint8_t msgID, void *payload, uint16_t len)
