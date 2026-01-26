@@ -89,7 +89,7 @@ public:
         // }
         // std::cout << " ====" << InputFrame << " \n";
 
-        if (InputFrame > 8 && inputData) // this size must to length offset
+        if (InputFrame > 8 && inputData && InputFrame < MSPV2_PAYLOAD_MAX) // this size must to length offset
         {
             // TODO: try search header position
             for (size_t i = 0; i < InputFrame; i++)
