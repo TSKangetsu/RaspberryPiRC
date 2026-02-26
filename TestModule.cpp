@@ -5,6 +5,7 @@
 #include <csignal>
 #include <sys/time.h>
 #include "RPiGPS/RPiGPS.hpp"
+#include "RPiGPS/RPiUbloxGPS.hpp"
 #include "RPiSBus/RPiSBus.hpp"
 #include "RPiIBus/RPiIBus.hpp"
 #include "RPiFlow/RPiFlow.hpp"
@@ -99,96 +100,46 @@ int main(int argc, char *argv[])
         }
         break;
 
-        case 'g':
-        {
-            long int time;
-            long int timee;
-            int baudrate = 115200;
-            baudrate = configSettle("./GPSConfig.json", "baudrate");
-            std::string GPSData;
-            std::cout << "the initial baudarte: " << baudrate << std::endl;
-            GPSUart myUart(optarg, baudrate);
-            myUart.GPSkDataAvaliable();
-            while (true)
-            {
-                long int timees = GetTimestamp() - TimestartUpLoad;
-                std::cout << "\nlast frame time Get : " << timees - time << "\n";
-                myUart.GPSRead(GPSData);
-                std::cout << std::endl
-                          << GPSData << std::endl;
-                time = GetTimestamp() - TimestartUpLoad;
-                usleep(200000);
-            }
-        }
-        break;
-
         case 'G':
         {
-            long int time;
-            long int timee;
             int baudrate = 115200;
-            baudrate = configSettle("./GPSConfig.json", "baudrate");
-            std::string GPSData;
-            GPSUartData mydata;
-            std::cout << "the initial baudarte: " << baudrate << std::endl;
-            GPSUart myUart(optarg, baudrate);
-            myUart.GPSkDataAvaliable();
+            int rateHz = 5;
+            GPSData mydata;
+            RPiUbloxGPS myUart(optarg, baudrate, rateHz);
+            system("clear");
             while (true)
             {
-                long int timees = GetTimestamp() - TimestartUpLoad;
-                mydata = myUart.GPSParse();
-                std::cout << "satillites: " << mydata.satillitesCount << " ";
-                std::cout << "DataError: " << mydata.DataUnCorrect << " ";
-                std::cout << "lat: " << std::setprecision(9) << mydata.lat << " ";
-                std::cout << "lng: " << std::setprecision(10) << mydata.lng << " \n";
-                std::cout << "ALT: " << std::setprecision(4) << mydata.GPSAlititude << "M "
-                          << "HDOP " << std::setprecision(4) << mydata.HDOP << " "
-                          << "Quailty: " << mydata.GPSQuality << " "
-                          << "GeoidalSP: " << mydata.GPSGeoidalSP << "\n";
-                time = GetTimestamp() - TimestartUpLoad;
-                usleep(200000);
+                mydata = myUart.parse();
+                if (mydata.valid)
+                {
+                    double freq = (mydata.intervalUs > 0) ? (1000000.0 / mydata.intervalUs) : 0;
+                    std::cout << "\033[H";
+                    std::cout << "--- DRONE GPS NAV MONITOR [" << rateHz << "Hz] ---\n";
+                    std::cout << "Sats: " << std::setw(2) << mydata.numSat
+                              << " | Fix: " << (int)mydata.fix
+                              << " | Freq: " << std::fixed << std::setprecision(1) << freq << " Hz    \n";
+                    std::cout << "-------------------------------------\n";
+                    // Raw lat/lon is 1e-7 deg
+                    std::cout << "Pos LLA: " << std::fixed << std::setprecision(8)
+                              << (mydata.lat / 10000000.0) << ", " << (mydata.lon / 10000000.0) << "    \n";
+                    // Raw alt is mm, convert to cm
+                    std::cout << "Alt MSL: " << std::fixed << std::setprecision(1) << (mydata.alt / 10.0) << " cm    \n";
+                    std::cout << "-------------------------------------\n";
+                    // Raw velocity is mm/s, convert to cm/s
+                    std::cout << "Velocity NED (cm/s):\n";
+                    std::cout << "  North: " << std::setw(7) << std::setprecision(1) << (mydata.velN / 10.0)
+                              << " | East: " << std::setw(7) << std::setprecision(1) << (mydata.velE / 10.0)
+                              << " | Down: " << std::setw(7) << std::setprecision(1) << (mydata.velD / 10.0) << "    \n";
+                    std::cout << "-------------------------------------\n";
+                    std::cout << "\033[K";
+                }
+                usleep(100);
             }
         }
         break;
 
         case 'C':
         {
-
-            std::signal(SIGINT, [](int signal)
-                        { signalIn = signal; });
-            int rawx = 0;
-            int rawy = 0;
-            int rawz = 0;
-            int calibration[10];
-            calibration[0] = -5000;
-            calibration[2] = -5000;
-            calibration[4] = -5000;
-            calibration[1] = 5000;
-            calibration[3] = 5000;
-            calibration[5] = 5000;
-            int flip[3] = {0, 12, 0};
-            GPSI2CCompass mycompassTest(optarg, 0x0d, COMPASS_QMC5883L, flip);
-            // mycompassTest.CompassCaliInit();
-
-            while (true)
-            {
-                mycompassTest.CompassGetRaw(rawx, rawy, rawz);
-                std::cout << "X:" << std::setw(7) << std::setfill(' ') << rawx << " "
-                          << "Y:" << std::setw(7) << std::setfill(' ') << rawy << " "
-                          << "Z:" << std::setw(7) << std::setfill(' ') << rawz << " "
-                          << "V:" << std::setw(7) << std::setfill(' ') << (int)sqrt(rawx * rawx + rawy * rawy + rawz * rawz) << " \n";
-                mycompassTest.CompassCalibration(true, calibration);
-                usleep(50 * 1000);
-                if (signalIn == SIGINT)
-                    break;
-            }
-            std::cout << "\n\n";
-            std::cout << "XMAX: " << calibration[0] << "\n";
-            std::cout << "XMIN: " << calibration[1] << "\n";
-            std::cout << "YMAX: " << calibration[2] << "\n";
-            std::cout << "YMIN: " << calibration[3] << "\n";
-            std::cout << "ZMAX: " << calibration[4] << "\n";
-            std::cout << "ZMIN: " << calibration[5] << "\n";
         }
         break;
 
@@ -200,7 +151,6 @@ int main(int argc, char *argv[])
             double angleUnfix = 0;
             int flip[3] = {0, 12, 0};
             GPSI2CCompass mycompassTest(optarg, 0x0d, COMPASS_QMC5883L, flip);
-            mycompassTest.CompassApply(3966, 647, 3517, 298, 573, -2574);
             while (true)
             {
                 mycompassTest.CompassGetRaw(rawx, rawy, rawz);

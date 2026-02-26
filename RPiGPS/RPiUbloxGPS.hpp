@@ -4,6 +4,8 @@
 #include <vector>
 #include <string>
 #include <cstring>
+#include <cstdio>
+#include <cstdint>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
@@ -11,152 +13,34 @@
 #include <asm/termbits.h>
 #include <thread>
 #include <chrono>
-#include <cmath>
-
-// UBX Protocol Constants
-#define UBX_PREAMBLE1 0xB5
-#define UBX_PREAMBLE2 0x62
-
-// Message Classes
-#define UBX_CLASS_NAV 0x01
-#define UBX_CLASS_ACK 0x05
-#define UBX_CLASS_CFG 0x06
-#define UBX_CLASS_MON 0x0A
-
-// Message IDs
-#define UBX_ID_NAV_PVT 0x07
-#define UBX_ID_NAV_VELNED 0x12
-#define UBX_ID_NAV_POSLLH 0x02
-#define UBX_ID_NAV_STATUS 0x03
-#define UBX_ID_NAV_SOL 0x06
-#define UBX_ID_ACK_ACK 0x01
-#define UBX_ID_ACK_NAK 0x00
-#define UBX_ID_CFG_PRT 0x00
-#define UBX_ID_CFG_MSG 0x01
-#define UBX_ID_CFG_RATE 0x08
-#define UBX_ID_CFG_NAV5 0x24
-#define UBX_ID_MON_VER 0x04
-
-// UBX Structures (Packed)
-#pragma pack(push, 1)
-
-struct ubx_header
-{
-    uint8_t preamble1;
-    uint8_t preamble2;
-    uint8_t msg_class;
-    uint8_t msg_id;
-    uint16_t length;
-};
-
-struct ubx_nav_pvt
-{
-    uint32_t iTOW;
-    uint16_t year;
-    uint8_t month;
-    uint8_t day;
-    uint8_t hour;
-    uint8_t min;
-    uint8_t sec;
-    uint8_t valid;
-    uint32_t tAcc;
-    int32_t nano;
-    uint8_t fixType;
-    uint8_t flags;
-    uint8_t flags2;
-    uint8_t numSV;
-    int32_t lon;
-    int32_t lat;
-    int32_t height;
-    int32_t hMSL;
-    uint32_t hAcc;
-    uint32_t vAcc;
-    int32_t velN;
-    int32_t velE;
-    int32_t velD;
-    int32_t gSpeed;
-    int32_t headMot;
-    uint32_t sAcc;
-    uint32_t headAcc;
-    uint16_t pDOP;
-    uint16_t flags3;      // reserved1 in older versions
-    uint8_t reserved1[5]; // reserved1 + headVeh
-    int32_t headVeh;
-    int16_t magDec;
-    uint16_t magAcc;
-};
-
-struct ubx_cfg_rate
-{
-    uint16_t measRate; // ms
-    uint16_t navRate;  // cycles
-    uint16_t timeRef;
-};
-
-struct ubx_cfg_nav5
-{
-    uint16_t mask;
-    uint8_t dynModel;
-    uint8_t fixMode;
-    int32_t fixedAlt;
-    uint32_t fixedAltVar;
-    int8_t minElev;
-    uint8_t drLimit;
-    uint16_t pDop;
-    uint16_t tDop;
-    uint16_t pAcc;
-    uint16_t tAcc;
-    uint8_t staticHoldThresh;
-    uint8_t dgnssTimeout;
-    uint8_t cnoThreshNumSVs;
-    uint8_t cnoThresh;
-    uint16_t reserved1;
-    uint16_t staticHoldMaxDist;
-    uint8_t utcStandard;
-    uint8_t reserved2[5];
-};
-
-struct ubx_cfg_msg
-{
-    uint8_t msgClass;
-    uint8_t msgID;
-    uint8_t rate;
-};
-
-#pragma pack(pop)
+#include <sys/time.h>
 
 struct GPSData
 {
     bool fix = false;
     int numSat = 0;
-    int32_t lat = 0;     // deg * 1e7
-    int32_t lon = 0;     // deg * 1e7
-    int32_t alt = 0;     // mm above MSL
+    int32_t lat = 0;     // 1e-7 deg
+    int32_t lon = 0;     // 1e-7 deg
+    int32_t alt = 0;     // mm
     int32_t velN = 0;    // mm/s
     int32_t velE = 0;    // mm/s
     int32_t velD = 0;    // mm/s
     int32_t gSpeed = 0;  // mm/s
-    int32_t heading = 0; // deg * 1e5
-    uint32_t hAcc = 0;   // mm
-    uint32_t vAcc = 0;   // mm
-    bool valid = false;  // Indicates if this specific parse call retrieved new data
+    int32_t heading = 0; // 1e-5 deg
+    bool valid = false;
+    uint32_t intervalUs = 0;
+    uint64_t lastFrameTime = 0;
 };
 
 class RPiUbloxGPS
 {
 public:
-    // Constructor now handles full initialization
-    RPiUbloxGPS(const std::string &device, int baudrate = 115200)
-        : device_(device), targetBaud_(baudrate), fd_(-1), step_(0)
+    RPiUbloxGPS(const std::string &device, int baudrate = 115200, int rateHz = 5)
+        : device_(device), fd_(-1), step_(0)
     {
-
         if (!openSerial(baudrate))
-        {
             throw std::runtime_error("Failed to open GPS serial port");
-        }
-
-        // Initialize GPS immediately
-        init();
+        init(rateHz);
     }
 
     ~RPiUbloxGPS()
@@ -165,29 +49,31 @@ public:
             close(fd_);
     }
 
-    // Combined function: Reads serial buffer, parses data, and returns the latest GPS state
-    // The 'valid' flag in returned GPSData indicates if a new packet was successfully parsed in this call.
-    // If no new data, it returns the last known good state with valid=false.
     GPSData parse()
     {
+        data_.valid = false;
         if (fd_ < 0)
-        {
-            data_.valid = false;
             return data_;
-        }
 
-        uint8_t buf[512]; // Increased buffer size for efficiency
+        uint8_t buf[2048];
         int n = read(fd_, buf, sizeof(buf));
-
-        data_.valid = false; // Reset valid flag for this iteration
 
         if (n > 0)
         {
-            for (int i = 0; i < n; ++i)
+            for (int i = 0; i < n; i++)
             {
                 if (processByte(buf[i]))
                 {
-                    data_.valid = true; // Mark as valid only if we got a fresh packet
+                    if (msgClass_ == 0x01 && msgID_ == 0x07)
+                    {
+                        struct timeval tv;
+                        gettimeofday(&tv, NULL);
+                        uint64_t now = (uint64_t)tv.tv_sec * 1000000 + tv.tv_usec;
+                        if (data_.lastFrameTime > 0)
+                            data_.intervalUs = now - data_.lastFrameTime;
+                        data_.lastFrameTime = now;
+                        data_.valid = true;
+                    }
                 }
             }
         }
@@ -196,30 +82,23 @@ public:
 
 private:
     std::string device_;
-    int targetBaud_;
     int fd_;
-
-    // Parsing State
     int step_;
-    uint8_t msgClass_;
-    uint8_t msgID_;
-    uint16_t payloadLen_;
-    uint16_t payloadCnt_;
+    uint8_t msgClass_, msgID_;
+    uint16_t payloadLen_, payloadCnt_;
     uint8_t ckA_, ckB_;
     std::vector<uint8_t> payloadBuffer_;
-
     GPSData data_;
 
     bool openSerial(int baudrate)
     {
-        fd_ = open(device_.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);
+        fd_ = open(device_.c_str(), O_RDWR | O_NOCTTY);
         if (fd_ < 0)
             return false;
 
-        fcntl(fd_, F_SETFL, 0);
-
         struct termios2 options;
-        ioctl(fd_, TCGETS2, &options);
+        if (ioctl(fd_, TCGETS2, &options) < 0)
+            return false;
 
         options.c_cflag &= ~CBAUD;
         options.c_cflag |= BOTHER;
@@ -234,110 +113,75 @@ private:
         options.c_cflag &= ~CRTSCTS;
 
         options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
-        options.c_iflag &= ~(IXON | IXOFF | IXANY);
+        options.c_iflag &= ~(IXON | IXOFF | IXANY | ICRNL | INLCR | IGNCR);
         options.c_oflag &= ~OPOST;
 
-        ioctl(fd_, TCSETS2, &options);
+        if (ioctl(fd_, TCSETS2, &options) < 0)
+            return false;
         return true;
     }
 
-    void init()
+    void init(int hz)
     {
-        // 1. Configure Update Rate to 10Hz (100ms)
-        configureRate(100);
-
-        // 2. Configure Dynamic Model to Airborne 4G
-        configureNav5(8);
-
-        // 3. Disable NMEA messages
-        configureMsg(0xF0, 0x00, 0); // GGA
-        configureMsg(0xF0, 0x01, 0); // GLL
-        configureMsg(0xF0, 0x02, 0); // GSA
-        configureMsg(0xF0, 0x03, 0); // GSV
-        configureMsg(0xF0, 0x04, 0); // RMC
-        configureMsg(0xF0, 0x05, 0); // VTG
-
-        // 4. Enable UBX NAV-PVT
-        configureMsg(UBX_CLASS_NAV, UBX_ID_NAV_PVT, 1);
-    }
-
-    void sendUBX(uint8_t msgClass, uint8_t msgID, void *payload, uint16_t len)
-    {
-        std::vector<uint8_t> packet;
-        packet.push_back(UBX_PREAMBLE1);
-        packet.push_back(UBX_PREAMBLE2);
-        packet.push_back(msgClass);
-        packet.push_back(msgID);
-        packet.push_back(len & 0xFF);
-        packet.push_back((len >> 8) & 0xFF);
-
-        uint8_t *p = (uint8_t *)payload;
-        for (int i = 0; i < len; ++i)
-        {
-            packet.push_back(p[i]);
-        }
-
-        uint8_t ck_a = 0, ck_b = 0;
-        for (size_t i = 2; i < packet.size(); ++i)
-        {
-            ck_a += packet[i];
-            ck_b += ck_a;
-        }
-
-        packet.push_back(ck_a);
-        packet.push_back(ck_b);
-
-        write(fd_, packet.data(), packet.size());
-    }
-
-    void configureRate(uint16_t measRateMs)
-    {
-        ubx_cfg_rate cfg = {};
-        cfg.measRate = measRateMs;
-        cfg.navRate = 1;
-        cfg.timeRef = 1;
-        sendUBX(UBX_CLASS_CFG, UBX_ID_CFG_RATE, &cfg, sizeof(cfg));
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    }
-
-    void configureNav5(uint8_t dynModel)
-    {
-        ubx_cfg_nav5 cfg = {};
-        cfg.mask = 0x0001;
-        cfg.dynModel = dynModel;
-        sendUBX(UBX_CLASS_CFG, UBX_ID_CFG_NAV5, &cfg, sizeof(cfg));
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        for (int i = 0; i < 6; i++)
+            configureMsg(0xF0, i, 0);
+        uint16_t period = 1000 / hz;
+        uint8_t rate[6] = {(uint8_t)(period & 0xFF), (uint8_t)(period >> 8), 0x01, 0x00, 0x01, 0x00};
+        sendUBX(0x06, 0x08, rate, 6);
+        uint8_t nav5[36] = {0};
+        nav5[0] = 0x01;
+        nav5[1] = 0x00;
+        nav5[2] = 8;
+        sendUBX(0x06, 0x24, nav5, 36);
+        configureMsg(0x01, 0x07, 1);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
     void configureMsg(uint8_t msgClass, uint8_t msgID, uint8_t rate)
     {
-        ubx_cfg_msg cfg = {};
-        cfg.msgClass = msgClass;
-        cfg.msgID = msgID;
-        cfg.rate = rate;
-        sendUBX(UBX_CLASS_CFG, UBX_ID_CFG_MSG, &cfg, sizeof(cfg));
-        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        uint8_t payload[3] = {msgClass, msgID, rate};
+        sendUBX(0x06, 0x01, payload, 3);
+    }
+
+    void sendUBX(uint8_t msgClass, uint8_t msgID, uint8_t *payload, uint16_t len)
+    {
+        std::vector<uint8_t> pkt;
+        pkt.push_back(0xB5);
+        pkt.push_back(0x62);
+        pkt.push_back(msgClass);
+        pkt.push_back(msgID);
+        pkt.push_back(len & 0xFF);
+        pkt.push_back((len >> 8) & 0xFF);
+        for (int i = 0; i < len; ++i)
+            pkt.push_back(payload[i]);
+        uint8_t a = 0, b = 0;
+        for (size_t i = 2; i < pkt.size(); ++i)
+        {
+            a += pkt[i];
+            b += a;
+        }
+        pkt.push_back(a);
+        pkt.push_back(b);
+        write(fd_, pkt.data(), pkt.size());
     }
 
     bool processByte(uint8_t b)
     {
-        bool parsed = false;
         switch (step_)
         {
         case 0:
-            if (b == UBX_PREAMBLE1)
+            if (b == 0xB5)
                 step_++;
             break;
         case 1:
-            if (b == UBX_PREAMBLE2)
+            if (b == 0x62)
                 step_++;
             else
                 step_ = 0;
             break;
         case 2:
             msgClass_ = b;
-            ckA_ = b;
-            ckB_ = b;
+            ckA_ = ckB_ = b;
             step_++;
             break;
         case 3:
@@ -358,15 +202,14 @@ private:
             ckB_ += ckA_;
             payloadCnt_ = 0;
             payloadBuffer_.resize(payloadLen_);
-            step_++;
+            step_ = (payloadLen_ > 0) ? 6 : 7;
+            if (payloadLen_ > 1024)
+                step_ = 0;
             break;
         case 6:
-            if (payloadCnt_ < payloadLen_)
-            {
-                payloadBuffer_[payloadCnt_++] = b;
-                ckA_ += b;
-                ckB_ += ckA_;
-            }
+            payloadBuffer_[payloadCnt_++] = b;
+            ckA_ += b;
+            ckB_ += ckA_;
             if (payloadCnt_ == payloadLen_)
                 step_++;
             break;
@@ -380,35 +223,35 @@ private:
             if (ckB_ == b)
             {
                 parseMessage();
-                parsed = true;
+                step_ = 0;
+                return true;
             }
             step_ = 0;
             break;
         }
-        return parsed;
+        return false;
+    }
+
+    int32_t readI32(const uint8_t *p)
+    {
+        return (int32_t)(p[0] | (p[1] << 8) | (p[2] << 16) | (p[3] << 24));
     }
 
     void parseMessage()
     {
-        if (msgClass_ == UBX_CLASS_NAV && msgID_ == UBX_ID_NAV_PVT)
+        const uint8_t *p = payloadBuffer_.data();
+        if (msgClass_ == 0x01 && msgID_ == 0x07 && payloadLen_ >= 92)
         {
-            if (payloadLen_ != sizeof(ubx_nav_pvt))
-                return;
-
-            ubx_nav_pvt *pvt = (ubx_nav_pvt *)payloadBuffer_.data();
-
-            data_.fix = (pvt->fixType == 3);
-            data_.numSat = pvt->numSV;
-            data_.lat = pvt->lat;
-            data_.lon = pvt->lon;
-            data_.alt = pvt->hMSL;
-            data_.hAcc = pvt->hAcc;
-            data_.vAcc = pvt->vAcc;
-            data_.velN = pvt->velN;
-            data_.velE = pvt->velE;
-            data_.velD = pvt->velD;
-            data_.gSpeed = pvt->gSpeed;
-            data_.heading = pvt->headMot;
+            data_.numSat = p[23];
+            data_.fix = (p[20] >= 3);
+            data_.lon = readI32(&p[24]);
+            data_.lat = readI32(&p[28]);
+            data_.alt = readI32(&p[36]);
+            data_.velN = readI32(&p[48]);
+            data_.velE = readI32(&p[52]);
+            data_.velD = readI32(&p[56]);
+            data_.gSpeed = readI32(&p[60]);
+            data_.heading = readI32(&p[64]);
         }
     }
 };

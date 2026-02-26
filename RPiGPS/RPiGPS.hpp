@@ -21,6 +21,7 @@
 #undef termios
 #include <termios.h>
 #include <vector>
+#include <cstring>
 #define PI 3.1415926
 #define QMC5883LADDR 0x0D
 #define HMC5883LADDR 0x1E
