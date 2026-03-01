@@ -56,12 +56,13 @@ class RPiUbloxGPS
 {
 public:
     RPiUbloxGPS(const std::string &device, int baudrate = 115200, int rateHz = 5)
-        : fd_(-1), step_(0), payloadLen_(0), payloadCnt_(0), ckA_(0), ckB_(0)
+        : fd_(-1), step_(0), payloadLen_(0), payloadCnt_(0), ckA_(0), ckB_(0),
+          lastConfigTime_(0), currentHz_(rateHz)
     {
         payloadBuffer_.reserve(512);
         if (!openSerial(device, baudrate))
             throw std::runtime_error("Failed to open GPS port");
-        init(rateHz);
+        applyConfig();
     }
 
     ~RPiUbloxGPS()
@@ -72,6 +73,16 @@ public:
 
     GPSData parse()
     {
+        // Periodic config heartbeat (every 5 seconds)
+        struct timeval now_tv;
+        gettimeofday(&now_tv, NULL);
+        uint64_t now_ms = (uint64_t)now_tv.tv_sec * 1000 + now_tv.tv_usec / 1000;
+        if (now_ms - lastConfigTime_ > 5000)
+        {
+            applyConfig();
+            lastConfigTime_ = now_ms;
+        }
+
         data_.valid = false;
         uint8_t buf[1024];
         ssize_t n = read(fd_, buf, sizeof(buf));
@@ -151,12 +162,10 @@ public:
                         data_.velD = p->velD;
                         data_.gSpeed = p->gSpeed;
                         data_.heading = p->headMot;
-                        struct timeval tv;
-                        gettimeofday(&tv, NULL);
-                        uint64_t now = (uint64_t)tv.tv_sec * 1000000 + tv.tv_usec;
+                        uint64_t now_us = (uint64_t)now_tv.tv_sec * 1000000 + now_tv.tv_usec;
                         if (data_.lastFrameTime > 0)
-                            data_.intervalUs = now - data_.lastFrameTime;
-                        data_.lastFrameTime = now;
+                            data_.intervalUs = now_us - data_.lastFrameTime;
+                        data_.lastFrameTime = now_us;
                         data_.valid = true;
                     }
                 }
@@ -168,9 +177,10 @@ public:
     }
 
 private:
-    int fd_, step_;
+    int fd_, step_, currentHz_;
     uint8_t msgClass_, msgID_, ckA_, ckB_;
     uint16_t payloadLen_, payloadCnt_;
+    uint64_t lastConfigTime_;
     std::vector<uint8_t> payloadBuffer_;
     GPSData data_;
 
@@ -197,14 +207,14 @@ private:
         return true;
     }
 
-    void init(int hz)
+    void applyConfig()
     {
         for (int i = 0; i < 6; i++)
         {
             uint8_t p[3] = {0xF0, (uint8_t)i, 0};
             sendUBX(0x06, 0x01, p, 3);
         }
-        uint16_t period = 1000 / hz;
+        uint16_t period = 1000 / currentHz_;
         uint8_t r[6] = {(uint8_t)(period & 0xFF), (uint8_t)(period >> 8), 0x01, 0x00, 0x01, 0x00};
         sendUBX(0x06, 0x08, r, 6);
         uint8_t n[36] = {0};
@@ -229,5 +239,6 @@ private:
         pkt.push_back(a);
         pkt.push_back(b);
         write(fd_, pkt.data(), pkt.size());
+        tcdrain(fd_);
     }
 };
