@@ -107,9 +107,19 @@ namespace CRSFTelemetry
         uint16_t rollRad = _decidegrees2Radians10000(roll);
         frame.payload[2] = (uint8_t)(rollRad >> 8);
         frame.payload[3] = (uint8_t)rollRad;
-        uint16_t yawRad = _decidegrees2Radians10000(yaw);
-        frame.payload[4] = (uint8_t)(yawRad >> 8);
-        frame.payload[5] = (uint8_t)yawRad;
+        // uint16_t yawRad = _decidegrees2Radians10000(yaw);
+        // frame.payload[4] = (uint8_t)(yawRad >> 8);
+        // frame.payload[5] = (uint8_t)yawRad;
+
+        // FIXME: workaround, seems rc accept +-180 instead of 0 - 360
+        float safe_yaw = yaw;
+        while (safe_yaw < 0.0f)
+            safe_yaw += 360.0f;
+        while (safe_yaw >= 360.0f)
+            safe_yaw -= 360.0f;
+        uint16_t yawRad_Fixed = (uint16_t)(safe_yaw * 174.532925f);
+        frame.payload[4] = (uint8_t)(yawRad_Fixed >> 8);
+        frame.payload[5] = (uint8_t)yawRad_Fixed;
 
         return frame;
     }
@@ -245,6 +255,7 @@ public:
             CRSFUart_fd = -1;
             throw std::invalid_argument("[UART] CRSF init failed");
         }
+        tcflush(CRSFUart_fd, TCIOFLUSH);
     };
 
     inline int CRSFRead(int *channelsData, int timeout = 100000)
@@ -281,9 +292,9 @@ public:
 
     int CRSFParser(uint8_t *data, int size, int channelsOut[16])
     {
-        if(data == nullptr)
+        if (data == nullptr)
             return -1;
-        
+
         const crsfProtocol::crsfFrame_t *hdr = (crsfProtocol::crsfFrame_t *)data;
         if (hdr->frame.deviceAddress == crsfProtocol::CRSF_ADDRESS_FLIGHT_CONTROLLER)
         {
