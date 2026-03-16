@@ -68,6 +68,7 @@ enum CompassType
 {
     COMPASS_QMC5883L,
     COMPASS_HMC5883L,
+    COMPASS_QMC5883P, // TODO: add qmc5883p
 };
 
 class GPSI2CCompass

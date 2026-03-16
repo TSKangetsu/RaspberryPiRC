@@ -102,8 +102,8 @@ int main(int argc, char *argv[])
 
         case 'G':
         {
-            int baudrate = 115200;
-            int rateHz = 5;
+            int baudrate = 38400;
+            int rateHz = 20;
             GPSData mydata;
             RPiUbloxGPS myUart(optarg, baudrate, rateHz);
             system("clear");

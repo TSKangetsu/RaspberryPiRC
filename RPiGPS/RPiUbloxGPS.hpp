@@ -47,6 +47,7 @@ struct GPSData
     int32_t velD = 0;    // mm/s
     int32_t gSpeed = 0;  // mm/s
     int32_t heading = 0; // 1e-5 deg
+    uint16_t pdop = 999;
     bool valid = false;
     uint32_t intervalUs = 0;
     uint64_t lastFrameTime = 0;
@@ -79,12 +80,11 @@ public:
         uint64_t now_ms = (uint64_t)now_tv.tv_sec * 1000 + now_tv.tv_usec / 1000;
         if (now_ms - lastConfigTime_ > 5000)
         {
-            applyConfig();
             lastConfigTime_ = now_ms;
         }
 
         data_.valid = false;
-        uint8_t buf[1024];
+        uint8_t buf[2048];
         ssize_t n = read(fd_, buf, sizeof(buf));
         for (ssize_t i = 0; i < n; i++)
         {
@@ -162,6 +162,8 @@ public:
                         data_.velD = p->velD;
                         data_.gSpeed = p->gSpeed;
                         data_.heading = p->headMot;
+                        data_.pdop = p->pDOP;
+
                         uint64_t now_us = (uint64_t)now_tv.tv_sec * 1000000 + now_tv.tv_usec;
                         if (data_.lastFrameTime > 0)
                             data_.intervalUs = now_us - data_.lastFrameTime;
@@ -215,14 +217,33 @@ private:
             sendUBX(0x06, 0x01, p, 3);
         }
         uint16_t period = 1000 / currentHz_;
-        uint8_t r[6] = {(uint8_t)(period & 0xFF), (uint8_t)(period >> 8), 0x01, 0x00, 0x01, 0x00};
-        sendUBX(0x06, 0x08, r, 6);
-        uint8_t n[36] = {0};
-        n[0] = 0x01;
-        n[2] = 8;
-        sendUBX(0x06, 0x24, n, 36);
-        uint8_t m[3] = {0x01, 0x07, 1};
-        sendUBX(0x06, 0x01, m, 3);
+        uint8_t rate[6] = {(uint8_t)(period & 0xFF), (uint8_t)(period >> 8), 0x01, 0x00, 0x01, 0x00};
+        sendUBX(0x06, 0x08, rate, 6);
+
+        // 3. CFG-NAV5: 动态模型 (Airborne 2G) 与 2D/3D 自动模式
+        uint8_t nav5[36] = {0};
+        nav5[0] = 0x01 | 0x02; // Mask: 应用 dynModel 和 fixMode
+        nav5[2] = 7;           // dynModel: 7 = Airborne < 2g (iNav 默认值)
+        nav5[3] = 3;           // fixMode: 3 = Auto 2D/3D
+        sendUBX(0x06, 0x24, nav5, 36);
+
+        // 4. CFG-SBAS: 开启 SBAS 增强 (提高精度)
+        uint8_t sbas[8] = {1, 3, 3, 0, 0, 0, 0, 0}; // Enable, Range+Diff usage
+        sendUBX(0x06, 0x16, sbas, 8);
+
+        // 对应 iNav M8 风格配置：开启 GPS, SBAS, Galileo, Beidou, GLONASS
+        uint8_t gnss[] = {
+            0x00, 0x00, 0xFF, 0x05,                         // msgVer, numTrkChHw(0), numTrkChUse(FF), numBlocks(5)
+            0x00, 0x08, 0x10, 0x00, 0x01, 0x00, 0x01, 0x01, // GPS
+            0x01, 0x01, 0x03, 0x00, 0x01, 0x00, 0x01, 0x01, // SBAS
+            0x02, 0x04, 0x08, 0x00, 0x01, 0x00, 0x01, 0x01, // Galileo
+            0x03, 0x02, 0x08, 0x00, 0x01, 0x00, 0x01, 0x01, // Beidou
+            0x06, 0x08, 0x0E, 0x00, 0x01, 0x00, 0x01, 0x01  // GLONASS
+        };
+        sendUBX(0x06, 0x3E, gnss, sizeof(gnss));
+
+        uint8_t pvt[3] = {0x01, 0x07, 1};
+        sendUBX(0x06, 0x01, pvt, 3);
     }
 
     void sendUBX(uint8_t cls, uint8_t id, uint8_t *payload, uint16_t len)
